@@ -64,5 +64,5 @@ if (EMSCRIPTEN)
   set_target_properties(basis_capi_transcoder.js PROPERTIES
       OUTPUT_NAME "basis_capi_transcoder"
       SUFFIX ".js"
-      LINK_FLAGS "--bind -s ALLOW_MEMORY_GROWTH=1 -O3 -s MALLOC=emmalloc -s MODULARIZE=1 -s EXPORT_NAME='BASIS' -s ASSERTIONS=0 -s EXPORTED_RUNTIME_METHODS=['cwrap']")
+      LINK_FLAGS "--bind -s ALLOW_MEMORY_GROWTH=1 -O3 -s MALLOC=emmalloc -s MINIMAL_RUNTIME=1 -s EXPORT_ES6=1 -s ASSERTIONS=0 -s EXPORTED_RUNTIME_METHODS=['cwrap'] -s EXPORT_KEEPALIVE=1")
 endif()

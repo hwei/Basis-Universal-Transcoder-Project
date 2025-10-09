@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basis CAPI Transcoder Test (Safe Mode)</title>
+    <title>Basis CAPI Transcoder Test (Minimal Mode)</title>
     <style>
         body { font-family: sans-serif; padding: 2em; }
         #output {
@@ -15,36 +15,27 @@
     </style>
 </head>
 <body>
-    <h1>Basis CAPI Transcoder Test (Safe Mode)</h1>
+    <h1>Basis CAPI Transcoder Test (Minimal Mode)</h1>
     <p>Testing `basis_capi_compute_transcoded_image_size_in_bytes` function.</p>
     <p>Result will be shown below and in the developer console.</p>
     <div id="output"></div>
 
-    <!-- Load the Emscripten-generated JS file, which creates the global BASIS factory function -->
-    <script src="../build/basis_capi_transcoder.js"></script>
+    <script type="module">
+        import BASIS from '../build/basis_capi_transcoder.js';
 
-    <script>
-        const outputDiv = document.getElementById('output');
-        outputDiv.textContent = 'Loading module...';
+        async function runTest() {
+            const outputDiv = document.getElementById('output');
+            outputDiv.textContent = 'Loading module...';
 
-        // The BASIS factory function is now global. 
-        // It returns a promise that resolves with the module instance.
-        BASIS({
-            locateFile: (path, prefix) => {
-                if (path.endsWith('.wasm')) {
-                    return '../build/basis_capi_transcoder.wasm';
-                }
-                return prefix + path;
-            }
-        }).then(basisModule => {
-            runTest(basisModule);
-        }).catch(err => {
-            console.error('Module loading failed:', err);
-            outputDiv.textContent = `Module loading failed: ${err}`;
-        });
-
-        function runTest(basisModule) {
             try {
+                outputDiv.textContent = 'Fetching wasm binary...';
+                const wasmResponse = await fetch('../build/basis_capi_transcoder.wasm');
+                const wasmBinary = await wasmResponse.arrayBuffer();
+                outputDiv.textContent = 'Wasm binary fetched.';
+
+                const basisModule = await BASIS({
+                    wasm: wasmBinary
+                });
                 outputDiv.textContent = 'Module loaded. Cwrapping function...';
                 console.log('Inspecting basisModule object:', basisModule);
 
@@ -76,6 +67,8 @@
                 outputDiv.textContent = `Test failed: ${err}`;
             }
         }
+
+        runTest();
     </script>
 </body>
 </html>
