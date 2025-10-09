@@ -4,6 +4,12 @@
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
+void basisu_transcoder_init()
+{
+    return basist::basisu_transcoder_init();
+}
+
+EMSCRIPTEN_KEEPALIVE
 uint32_t basis_compute_transcoded_image_size_in_bytes(basist::transcoder_texture_format target_format, uint32_t orig_width, uint32_t orig_height)
 {
     return basist::basis_compute_transcoded_image_size_in_bytes(target_format, orig_width, orig_height);
@@ -80,12 +86,6 @@ EMSCRIPTEN_KEEPALIVE
 bool ktx2_transcoder_init(basist::ktx2_transcoder* self, const void* pData, uint32_t data_size)
 {
     return self->init(pData, data_size);
-}
-
-EMSCRIPTEN_KEEPALIVE
-void ktx2_transcoder_clear(basist::ktx2_transcoder* self)
-{
-    return self->clear();
 }
 
 EMSCRIPTEN_KEEPALIVE
