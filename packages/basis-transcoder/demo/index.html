@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basis Universal Transcoder Demo</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Basis Universal Transcoder Demo</h1>
+            <p>WebAssembly-based texture transcoding with TypeScript bindings</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>Load KTX2 File</h2>
+                <div class="upload-area">
+                    <input type="file" id="fileInput" accept=".ktx2,.basis" />
+                    <label for="fileInput" class="upload-label">
+                        Choose KTX2 or Basis file...
+                    </label>
+                </div>
+            </section>
+
+            <section class="transcode-section">
+                <h2>Transcoding Options</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="targetFormat">Target Format:</label>
+                        <select id="targetFormat">
+                            <option value="13">RGBA32 (Uncompressed)</option>
+                            <option value="0">BC1 RGB (DXT1)</option>
+                            <option value="1">BC3 RGBA (DXT5)</option>
+                            <option value="4">BC7 RGBA</option>
+                            <option value="10">ASTC 4x4 RGBA</option>
+                            <option value="8">PVRTC1 4bpp RGB</option>
+                            <option value="9">PVRTC1 4bpp RGBA</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="mipLevel">Mip Level:</label>
+                        <select id="mipLevel">
+                            <option value="0">Level 0 (Full Size)</option>
+                        </select>
+                    </div>
+                    <button id="transcodeBtn" disabled>Transcode</button>
+                </div>
+            </section>
+
+            <section class="result-section">
+                <h2>Result</h2>
+                <div id="result" class="result-content">
+                    <div class="result-info">
+                        <div id="transcodeInfo"></div>
+                        <div id="performanceInfo"></div>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="resultCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="platform-info">
+                <h3>Platform Support</h3>
+                <div id="platformInfo"></div>
+            </div>
+        </footer>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

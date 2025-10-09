@@ -1,0 +1,54 @@
+{
+  "name": "basis-universal-transcoder",
+  "version": "1.0.0",
+  "description": "WebAssembly-based Basis Universal texture transcoder with TypeScript bindings",
+  "type": "module",
+  "main": "./dist/index.umd.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.umd.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./wasm": {
+      "import": "./dist/wasm/basis_capi_transcoder.js",
+      "types": "./dist/wasm/basis_capi_transcoder.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "basis-universal",
+    "texture",
+    "transcoder",
+    "webassembly",
+    "wasm",
+    "typescript"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && npm run build:types",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "preview": "vite preview",
+    "copy-wasm": "cp ../../build/basis_capi_transcoder.* public/wasm/",
+    "prebuild": "npm run copy-wasm"
+  },
+  "devDependencies": {
+    "@types/emscripten": "^1.39.10",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-plugin-dts": "^3.9.1",
+    "vite-plugin-wasm": "^3.3.0"
+  },
+  "peerDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "your-repo-url"
+  },
+  "license": "Apache-2.0",
+  "author": "Your Name"
+}
