@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basis CAPI Transcoder Test</title>
+    <title>Basis CAPI Transcoder Test (Safe Mode)</title>
     <style>
         body { font-family: sans-serif; padding: 2em; }
         #output {
@@ -15,30 +15,37 @@
     </style>
 </head>
 <body>
-    <h1>Basis CAPI Transcoder Test</h1>
+    <h1>Basis CAPI Transcoder Test (Safe Mode)</h1>
     <p>Testing `basis_capi_compute_transcoded_image_size_in_bytes` function.</p>
     <p>Result will be shown below and in the developer console.</p>
     <div id="output"></div>
 
-    <script type="module">
-        // The build artifacts are expected to be in a sibling `build` directory
-        import BASIS from '../build/basis_capi_transcoder.js';
+    <!-- Load the Emscripten-generated JS file, which creates the global BASIS factory function -->
+    <script src="../build/basis_capi_transcoder.js"></script>
 
-        async function runTest() {
-            const outputDiv = document.getElementById('output');
-            outputDiv.textContent = 'Loading module...';
+    <script>
+        const outputDiv = document.getElementById('output');
+        outputDiv.textContent = 'Loading module...';
 
+        // The BASIS factory function is now global. 
+        // It returns a promise that resolves with the module instance.
+        BASIS({
+            locateFile: (path, prefix) => {
+                if (path.endsWith('.wasm')) {
+                    return '../build/basis_capi_transcoder.wasm';
+                }
+                return prefix + path;
+            }
+        }).then(basisModule => {
+            runTest(basisModule);
+        }).catch(err => {
+            console.error('Module loading failed:', err);
+            outputDiv.textContent = `Module loading failed: ${err}`;
+        });
+
+        function runTest(basisModule) {
             try {
-                outputDiv.textContent = 'Fetching wasm binary...';
-                const wasmResponse = await fetch('../build/basis_capi_transcoder.wasm');
-                const wasmBinary = await wasmResponse.arrayBuffer();
-                outputDiv.textContent = 'Wasm binary fetched.';
-
-                const basisModule = await BASIS({
-                    wasm: wasmBinary
-                });
                 outputDiv.textContent = 'Module loaded. Cwrapping function...';
-
                 console.log('Inspecting basisModule object:', basisModule);
 
                 const computeSize = basisModule.cwrap(
@@ -49,15 +56,17 @@
 
                 outputDiv.textContent = 'Function wrapped. Running test...';
 
-                // Test with some example values.
-                // From basisu_transcoder.h: cTFETC1_RGB = 0
-                const target_format = 0; 
+                const target_format = 0; // ETC1_RGB
                 const width = 512;
                 const height = 512;
 
                 const sizeInBytes = computeSize(target_format, width, height);
 
-                const resultText = `basis_capi_compute_transcoded_image_size_in_bytes(\n  format: ${target_format} (ETC1_RGB),\n  width: ${width},\n  height: ${height}\n) = ${sizeInBytes} bytes`;
+                const resultText = `basis_capi_compute_transcoded_image_size_in_bytes(
+  format: ${target_format} (ETC1_RGB),
+  width: ${width},
+  height: ${height}
+) = ${sizeInBytes} bytes`;
                 
                 console.log(resultText);
                 outputDiv.textContent = `Test finished. Result:\n\n${resultText}`;
@@ -67,8 +76,6 @@
                 outputDiv.textContent = `Test failed: ${err}`;
             }
         }
-
-        runTest();
     </script>
 </body>
 </html>
