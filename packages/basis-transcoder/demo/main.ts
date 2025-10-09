@@ -5,16 +5,42 @@ import BasisUniversal, {
   isFormatSupported, 
   getFormatName 
 } from '../src/index.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/+esm';
 
 class BasisDemo {
   private basisUniversal: BasisUniversal | null = null;
   private currentTranscoder: KTX2Transcoder | null = null;
   private currentFileData: Uint8Array | null = null;
+  private scene: THREE.Scene | null = null;
+  private camera: THREE.OrthographicCamera | null = null;
+  private renderer: THREE.WebGLRenderer | null = null;
+  private currentMesh: THREE.Mesh | null = null;
 
   constructor() {
     this.initializeUI();
+    this.initializeThreeJS();
     this.detectPlatformSupport();
     this.loadBasisModule();
+  }
+
+  private initializeThreeJS() {
+    // 创建 Three.js 场景、相机和渲染器
+    this.scene = new THREE.Scene();
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(512, 512); // 默认尺寸，会根据纹理调整
+    this.renderer.setClearColor(0x222222);
+    
+    // 将渲染器添加到 canvas 容器
+    const canvasContainer = document.querySelector('.canvas-container') as HTMLElement;
+    if (canvasContainer) {
+      // 清空容器并添加 Three.js canvas
+      canvasContainer.innerHTML = '';
+      canvasContainer.appendChild(this.renderer.domElement);
+    }
+
+    // 创建正交相机（默认配置，会根据纹理尺寸调整）
+    this.camera = new THREE.OrthographicCamera(-256, 256, 256, -256, 1, 1000);
+    this.camera.position.z = 5;
   }
 
   private async loadBasisModule() {
@@ -138,6 +164,38 @@ class BasisDemo {
     }
   }
 
+  private getThreeJSFormat(format: TranscoderTextureFormat): number | null {
+    // 映射 TranscoderTextureFormat 到 Three.js 压缩纹理格式
+    switch (format) {
+      case TranscoderTextureFormat.cTFBC1_RGB:
+        return THREE.RGB_S3TC_DXT1_Format;
+      case TranscoderTextureFormat.cTFBC3_RGBA:
+        return THREE.RGBA_S3TC_DXT5_Format;
+      case TranscoderTextureFormat.cTFBC4_R:
+        return THREE.RED_RGTC1_Format;
+      case TranscoderTextureFormat.cTFBC5_RG:
+        return THREE.RED_GREEN_RGTC2_Format;
+      case TranscoderTextureFormat.cTFBC7_RGBA:
+        return THREE.RGBA_BPTC_Format;
+      case TranscoderTextureFormat.cTFASTC_4x4_RGBA:
+        return THREE.RGBA_ASTC_4x4_Format;
+      case TranscoderTextureFormat.cTFPVRTC1_4_RGB:
+        return THREE.RGB_PVRTC_4BPPV1_Format;
+      case TranscoderTextureFormat.cTFPVRTC1_4_RGBA:
+        return THREE.RGBA_PVRTC_4BPPV1_Format;
+      case TranscoderTextureFormat.cTFPVRTC2_4_RGB:
+        return THREE.RGB_PVRTC_2BPPV1_Format;
+      case TranscoderTextureFormat.cTFPVRTC2_4_RGBA:
+        return THREE.RGBA_PVRTC_2BPPV1_Format;
+      case TranscoderTextureFormat.cTFETC2_EAC_R11:
+        return THREE.RED_RGTC1_Format;
+      case TranscoderTextureFormat.cTFETC2_EAC_RG11:
+        return THREE.RED_GREEN_RGTC2_Format;
+      default:
+        return null; // 不支持的压缩格式或未压缩格式
+    }
+  }
+
   private displayResult(result: any, duration: number) {
     // Display transcoding info
     const transcodeInfo = document.getElementById('transcodeInfo')!;
@@ -155,35 +213,168 @@ class BasisDemo {
       <div><strong>Throughput:</strong> ${(result.data.length / 1024 / 1024 / (duration / 1000)).toFixed(2)} MB/s</div>
     `;
     
-    // Display image if it's uncompressed RGBA
-    if (result.format === TranscoderTextureFormat.cTFRGBA32) {
-      this.displayImageData(result.data, result.width, result.height);
+    // 使用 Three.js 显示纹理
+    this.displayTextureWithThreeJS(result);
+  }
+
+  private displayTextureWithThreeJS(result: any) {
+    if (!this.scene || !this.camera || !this.renderer) {
+      console.error('Three.js not initialized');
+      return;
+    }
+
+    const { data, width, height, format } = result;
+    
+    // 移除之前的网格
+    if (this.currentMesh) {
+      this.scene.remove(this.currentMesh);
+      this.currentMesh.geometry.dispose();
+      this.currentMesh.material.dispose();
+      if (this.currentMesh.material.map) {
+        this.currentMesh.material.map.dispose();
+      }
+    }
+
+    // 调整渲染器尺寸和相机
+    const maxSize = 512;
+    const aspectRatio = width / height;
+    let renderWidth, renderHeight;
+    
+    if (aspectRatio > 1) {
+      renderWidth = Math.min(maxSize, width);
+      renderHeight = renderWidth / aspectRatio;
     } else {
-      // For compressed formats, show a placeholder
-      const canvas = document.getElementById('resultCanvas') as HTMLCanvasElement;
-      const ctx = canvas.getContext('2d')!;
-      canvas.width = 200;
-      canvas.height = 100;
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fillRect(0, 0, 200, 100);
-      ctx.fillStyle = '#333';
-      ctx.font = '14px Arial';
+      renderHeight = Math.min(maxSize, height);
+      renderWidth = renderHeight * aspectRatio;
+    }
+    
+    this.renderer.setSize(renderWidth, renderHeight);
+    
+    // 调整相机视野以适应纹理尺寸
+    this.camera.left = width / -2;
+    this.camera.right = width / 2;
+    this.camera.top = height / 2;
+    this.camera.bottom = height / -2;
+    this.camera.updateProjectionMatrix();
+
+    let texture: THREE.Texture;
+    
+    // 检查是否为压缩格式
+    const threeJSFormat = this.getThreeJSFormat(format);
+    
+    if (threeJSFormat !== null) {
+      // 创建压缩纹理
+      texture = new THREE.CompressedTexture(
+        [{
+          data: data,
+          width: width,
+          height: height,
+        }],
+        width,
+        height,
+        threeJSFormat
+      );
+      texture.needsUpdate = true;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      
+      console.log(`Created compressed texture with format: ${threeJSFormat}`);
+    } else if (format === TranscoderTextureFormat.cTFRGBA32) {
+      // 未压缩的 RGBA32 格式
+      texture = new THREE.DataTexture(
+        data,
+        width,
+        height,
+        THREE.RGBAFormat,
+        THREE.UnsignedByteType
+      );
+      texture.needsUpdate = true;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.flipY = true;
+      
+      console.log('Created uncompressed RGBA32 texture');
+    } else if (format === TranscoderTextureFormat.cTFRGB565) {
+      // RGB565 格式
+      texture = new THREE.DataTexture(
+        data,
+        width,
+        height,
+        THREE.RGBFormat,
+        THREE.UnsignedShort565Type
+      );
+      texture.needsUpdate = true;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.flipY = true;
+      
+      console.log('Created RGB565 texture');
+    } else if (format === TranscoderTextureFormat.cTFRGBA4444) {
+      // RGBA4444 格式
+      texture = new THREE.DataTexture(
+        data,
+        width,
+        height,
+        THREE.RGBAFormat,
+        THREE.UnsignedShort4444Type
+      );
+      texture.needsUpdate = true;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.flipY = true;
+      
+      console.log('Created RGBA4444 texture');
+    } else {
+      // 其他未支持格式的处理
+      console.warn(`Unsupported format for Three.js display: ${format} (${getFormatName(format)})`);
+      this.displayFallbackMessage(`Unsupported format: ${getFormatName(format)}`);
+      return;
+    }
+
+    // 创建材质和几何体
+    const material = new THREE.MeshBasicMaterial({ 
+      map: texture,
+      transparent: result.hasAlpha,
+      side: THREE.DoubleSide
+    });
+    
+    const geometry = new THREE.PlaneGeometry(width, height);
+    
+    // 对于压缩纹理，需要手动翻转 UV（因为 texture.flipY 不支持压缩纹理）
+    if (threeJSFormat !== null) {
+      const uvs = geometry.attributes.uv;
+      for (let i = 0; i < uvs.count; i++) {
+        uvs.setY(i, 1 - uvs.getY(i));
+      }
+    }
+
+    // 创建网格并添加到场景
+    this.currentMesh = new THREE.Mesh(geometry, material);
+    this.currentMesh.position.z = 0;
+    this.scene.add(this.currentMesh);
+
+    // 渲染场景
+    this.renderer.render(this.scene, this.camera);
+    
+    console.log(`Displayed texture: ${width}x${height}, format: ${getFormatName(format)}`);
+  }
+
+  private displayFallbackMessage(message: string) {
+    if (!this.renderer) return;
+    
+    // 创建一个简单的错误显示
+    const canvas = this.renderer.domElement;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#333333';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Compressed format', 100, 45);
-      ctx.fillText('(Cannot display directly)', 100, 65);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, canvas.width / 2, canvas.height / 2);
     }
   }
 
   private displayImageData(data: Uint8Array, width: number, height: number) {
-    const canvas = document.getElementById('resultCanvas') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-    
-    canvas.width = width;
-    canvas.height = height;
-    
-    const imageData = ctx.createImageData(width, height);
-    imageData.data.set(data);
-    ctx.putImageData(imageData, 0, 0);
+    // 保留原始方法作为备用，但现在主要使用 Three.js
+    console.log('displayImageData called, but using Three.js instead');
   }
 
   private detectPlatformSupport() {
@@ -205,8 +396,7 @@ class BasisDemo {
     });
     
     // Set recommended format as default
-    const canvas = document.getElementById('resultCanvas') as HTMLCanvasElement;
-    const bestFormat = detectBestFormat(canvas.getContext('webgl') as WebGLRenderingContext);
+    const bestFormat = detectBestFormat(this.renderer.getContext());
     const targetFormatSelect = document.getElementById('targetFormat') as HTMLSelectElement;
     targetFormatSelect.value = bestFormat.toString();
     this.updateFormatSupport();

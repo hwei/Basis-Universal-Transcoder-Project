@@ -30,13 +30,16 @@
                     <div class="control-group">
                         <label for="targetFormat">Target Format:</label>
                         <select id="targetFormat">
-                            <option value="13">RGBA32 (Uncompressed)</option>
-                            <option value="0">BC1 RGB (DXT1)</option>
-                            <option value="1">BC3 RGBA (DXT5)</option>
-                            <option value="4">BC7 RGBA</option>
-                            <option value="10">ASTC 4x4 RGBA</option>
+                            
+                            <option value="0">ETC1 RGB</option>
+                            <option value="1">ETC1 RGBA</option>
+                            <option value="2">BC1 RGB (DXT1)</option>
+                            <option value="3">BC3 RGBA (DXT5)</option>
+                            <option value="6">BC7 RGBA</option>
                             <option value="8">PVRTC1 4bpp RGB</option>
                             <option value="9">PVRTC1 4bpp RGBA</option>
+                            <option value="10">ASTC 4x4 RGBA</option>
+                            <option value="13">RGBA32 (Uncompressed)</option>
                         </select>
                     </div>
                     <div class="control-group">
@@ -57,7 +60,7 @@
                         <div id="performanceInfo"></div>
                     </div>
                     <div class="canvas-container">
-                        <canvas id="resultCanvas"></canvas>
+                        <!-- Three.js canvas will be inserted here dynamically -->
                     </div>
                 </div>
             </section>
