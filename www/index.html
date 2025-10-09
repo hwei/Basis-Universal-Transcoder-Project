@@ -16,7 +16,7 @@
 </head>
 <body>
     <h1>Basis CAPI Transcoder Test (Minimal Mode)</h1>
-    <p>Testing `basis_capi_compute_transcoded_image_size_in_bytes` function.</p>
+    <p>Testing `basis_compute_transcoded_image_size_in_bytes` function.</p>
     <p>Result will be shown below and in the developer console.</p>
     <div id="output"></div>
 
@@ -40,7 +40,7 @@
                 console.log('Inspecting basisModule object:', basisModule);
 
                 const computeSize = basisModule.cwrap(
-                    'basis_capi_compute_transcoded_image_size_in_bytes',
+                    'basis_compute_transcoded_image_size_in_bytes',
                     'number',
                     ['number', 'number', 'number']
                 );
@@ -53,7 +53,7 @@
 
                 const sizeInBytes = computeSize(target_format, width, height);
 
-                const resultText = `basis_capi_compute_transcoded_image_size_in_bytes(
+                const resultText = `basis_compute_transcoded_image_size_in_bytes(
   format: ${target_format} (ETC1_RGB),
   width: ${width},
   height: ${height}
