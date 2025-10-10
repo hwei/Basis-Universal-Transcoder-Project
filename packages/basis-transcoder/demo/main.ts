@@ -1,9 +1,10 @@
-import BasisUniversal, { 
-  KTX2Transcoder, 
-  TranscoderTextureFormat, 
-  detectBestFormat, 
-  isFormatSupported, 
-  getFormatName, 
+import {
+  BasisUniversal,
+  KTX2Transcoder,
+  TranscoderTextureFormat,
+  detectBestFormat,
+  isFormatSupported,
+  getFormatName,
   TranscodeResult
 } from '../src/index';
 import * as THREE from 'three';
@@ -29,7 +30,7 @@ class BasisDemo {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(512, 512); // 默认尺寸，会根据纹理调整
     this.renderer.setClearColor(0x222222);
-    
+
     // 将渲染器添加到 canvas 容器
     const canvasContainer = document.querySelector('.canvas-container') as HTMLElement;
     if (canvasContainer) {
@@ -104,10 +105,10 @@ class BasisDemo {
   private async loadFile(file: File) {
     try {
       this.updateStatus('Loading file...');
-      
+
       const arrayBuffer = await file.arrayBuffer();
       const fileData = new Uint8Array(arrayBuffer);
-      
+
       if (!this.currentTranscoder) {
         throw new Error('No transcoder instance available');
       }
@@ -118,10 +119,10 @@ class BasisDemo {
       }
 
       this.updateStatus('File loaded successfully');
-      
+
       const transcodeBtn = document.getElementById('transcodeBtn') as HTMLButtonElement;
       transcodeBtn.disabled = false;
-      
+
     } catch (error) {
       console.error('Error loading file:', error);
       this.updateStatus('Error loading file', true);
@@ -133,30 +134,30 @@ class BasisDemo {
 
     try {
       this.updateStatus('Transcoding...');
-      
+
       const targetFormat = parseInt((document.getElementById('targetFormat') as HTMLSelectElement).value) as TranscoderTextureFormat;
       const mipLevel = parseInt((document.getElementById('mipLevel') as HTMLSelectElement).value);
-      
+
       const startTime = performance.now();
-      
+
       if (!this.currentTranscoder.startTranscoding()) {
         throw new Error('Failed to start transcoding');
       }
-      
+
       const result = this.currentTranscoder.transcodeImageLevel({
         format: targetFormat,
         level: mipLevel
       });
-      
+
       const endTime = performance.now();
-      
+
       if (!result) {
         throw new Error('Transcoding failed');
       }
-      
+
       this.displayResult(result, targetFormat, endTime - startTime);
       this.updateStatus('Transcoding completed successfully');
-      
+
     } catch (error) {
       console.error('Transcoding error:', error);
       this.updateStatus('Transcoding failed', true);
@@ -206,14 +207,14 @@ class BasisDemo {
       <div><strong>Data Size:</strong> ${this.formatBytes(result.data.length)}</div>
       <div><strong>Has Alpha:</strong> ${hasAlpha ? 'Yes' : 'No'}</div>
     `;
-    
+
     // Display performance info
     const performanceInfo = document.getElementById('performanceInfo')!;
     performanceInfo.innerHTML = `
       <div><strong>Transcode Time:</strong> ${duration.toFixed(2)}ms</div>
       <div><strong>Throughput:</strong> ${(result.data.length / 1024 / 1024 / (duration / 1000)).toFixed(2)} MB/s</div>
     `;
-    
+
     // 使用 Three.js 显示纹理
     this.displayTextureWithThreeJS(result, format);
   }
@@ -224,8 +225,8 @@ class BasisDemo {
       return;
     }
 
-    const { data, width, height  } = result;
-    
+    const { data, width, height } = result;
+
     // 移除之前的网格
     if (this.currentMesh) {
       this.scene.remove(this.currentMesh);
@@ -240,7 +241,7 @@ class BasisDemo {
     const maxSize = 512;
     const aspectRatio = width / height;
     let renderWidth, renderHeight;
-    
+
     if (aspectRatio > 1) {
       renderWidth = Math.min(maxSize, width);
       renderHeight = renderWidth / aspectRatio;
@@ -248,9 +249,9 @@ class BasisDemo {
       renderHeight = Math.min(maxSize, height);
       renderWidth = renderHeight * aspectRatio;
     }
-    
+
     this.renderer.setSize(renderWidth, renderHeight);
-    
+
     // 调整相机视野以适应纹理尺寸
     this.camera.left = width / -2;
     this.camera.right = width / 2;
@@ -259,11 +260,11 @@ class BasisDemo {
     this.camera.updateProjectionMatrix();
 
     let texture: THREE.Texture;
-    
+
     // 检查是否为压缩格式
     const threeJSFormat = this.getThreeJSFormat(format);
     console.log(`threeJSFormat format: ${threeJSFormat}`);
-    
+
     if (threeJSFormat !== null) {
       // 创建压缩纹理
       texture = new THREE.CompressedTexture(
@@ -278,7 +279,7 @@ class BasisDemo {
       );
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
-      
+
       console.log(`Created compressed texture with format: ${threeJSFormat}`);
     } else if (format === TranscoderTextureFormat.cTFRGBA32) {
       // 未压缩的 RGBA32 格式
@@ -292,7 +293,7 @@ class BasisDemo {
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.flipY = true;
-      
+
       console.log('Created uncompressed RGBA32 texture');
     } else if (format === TranscoderTextureFormat.cTFRGB565) {
       // RGB565 格式
@@ -306,7 +307,7 @@ class BasisDemo {
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.flipY = true;
-      
+
       console.log('Created RGB565 texture');
     } else if (format === TranscoderTextureFormat.cTFRGBA4444) {
       // RGBA4444 格式
@@ -320,7 +321,7 @@ class BasisDemo {
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.flipY = true;
-      
+
       console.log('Created RGBA4444 texture');
     } else {
       // 其他未支持格式的处理
@@ -331,14 +332,14 @@ class BasisDemo {
 
     // 创建材质和几何体
     const hasAlpha = this.basisUniversal?.funcs.basis_transcoder_format_has_alpha(format);
-    const material = new THREE.MeshBasicMaterial({ 
+    const material = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: hasAlpha,
       side: THREE.DoubleSide
     });
-    
+
     const geometry = new THREE.PlaneGeometry(width, height);
-    
+
     // 对于压缩纹理，需要手动翻转 UV（因为 texture.flipY 不支持压缩纹理）
     if (threeJSFormat !== null) {
       const uvs = geometry.attributes.uv;
@@ -354,13 +355,13 @@ class BasisDemo {
 
     // 渲染场景
     this.renderer.render(this.scene, this.camera);
-    
+
     console.log(`Displayed texture: ${width}x${height}, format: ${getFormatName(format)}`);
   }
 
   private displayFallbackMessage(message: string) {
     if (!this.renderer) return;
-    
+
     // 创建一个简单的错误显示
     const canvas = this.renderer.domElement;
     const ctx = canvas.getContext('2d');
@@ -377,7 +378,7 @@ class BasisDemo {
 
   private detectPlatformSupport() {
     const platformInfo = document.getElementById('platformInfo')!;
-    
+
     const formats = [
       { name: 'BC1/BC3 (S3TC)', format: TranscoderTextureFormat.cTFBC3_RGBA },
       { name: 'BC7', format: TranscoderTextureFormat.cTFBC7_RGBA },
@@ -385,14 +386,14 @@ class BasisDemo {
       { name: 'PVRTC', format: TranscoderTextureFormat.cTFPVRTC1_4_RGBA },
       { name: 'ETC2', format: TranscoderTextureFormat.cTFETC2_EAC_R11 },
     ];
-    
+
     formats.forEach(({ name, format }) => {
       const div = document.createElement('div');
       div.className = `platform-support ${isFormatSupported(format) ? 'supported' : 'not-supported'}`;
       div.textContent = `${name}: ${isFormatSupported(format) ? '✓' : '✗'}`;
       platformInfo.appendChild(div);
     });
-    
+
     // Set recommended format as default
     const bestFormat = detectBestFormat(this.renderer?.getContext() as any);
     const targetFormatSelect = document.getElementById('targetFormat') as HTMLSelectElement;
@@ -403,7 +404,7 @@ class BasisDemo {
   private updateFormatSupport() {
     const targetFormat = parseInt((document.getElementById('targetFormat') as HTMLSelectElement).value);
     const supported = isFormatSupported(targetFormat as TranscoderTextureFormat);
-    
+
     const select = document.getElementById('targetFormat') as HTMLSelectElement;
     select.style.borderColor = supported ? '#27ae60' : '#e74c3c';
     select.title = supported ? 'Format is supported on this platform' : 'Format may not be supported on this platform';

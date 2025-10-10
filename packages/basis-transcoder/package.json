@@ -33,9 +33,7 @@
     "dev": "vite",
     "build": "vite build && npm run build:types",
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "preview": "vite preview",
-    "copy-wasm": "cp ../../build/basis_capi_transcoder.* public/wasm/",
-    "prebuild": "npm run copy-wasm"
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@types/emscripten": "^1.39.10",

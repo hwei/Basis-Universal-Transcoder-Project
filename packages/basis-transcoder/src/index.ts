@@ -133,11 +133,6 @@ export class BasisUniversal {
 }
 
 /**
- * Default export for convenience
- */
-export default BasisUniversal;
-
-/**
  * Initialize the Basis Universal transcoder module
  */
 async function initBasisModule(): Promise<EmscriptenModule> {
