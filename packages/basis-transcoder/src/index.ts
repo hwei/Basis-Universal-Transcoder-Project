@@ -8,7 +8,7 @@
 import { EmscriptenModule, TranscoderTextureFormat } from './types';
 import { KTX2Transcoder } from './transcoder';
 import basis_capi_transcoder_wasm_url from '../../../build/basis_capi_transcoder.wasm?url';
-import basis_capi_transcoder_wasm_js from '../../../build/basis_capi_transcoder.js';
+import basis_capi_transcoder_js from '../../../build/basis_capi_transcoder.js';
 
 // Re-export types and utilities
 export * from './types';
@@ -138,7 +138,7 @@ export class BasisUniversal {
 async function initBasisModule(): Promise<EmscriptenModule> {
   const wasmResponse = await fetch(basis_capi_transcoder_wasm_url);
   const wasmArrayBuffer = await wasmResponse.arrayBuffer();
-  const module = await basis_capi_transcoder_wasm_js({
+  const module = await basis_capi_transcoder_js({
     wasm: wasmArrayBuffer,
   });
 
@@ -149,7 +149,7 @@ async function initBasisModule(): Promise<EmscriptenModule> {
  * Initialize the Basis Universal transcoder module with custom WASM
  */
 async function initBasisModuleWithCustomWasm(wasm: BufferSource): Promise<EmscriptenModule> {
-  const module = await basis_capi_transcoder_wasm_js({
+  const module = await basis_capi_transcoder_js({
     wasm,
   });
 
