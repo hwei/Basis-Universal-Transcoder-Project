@@ -1,44 +1,42 @@
-import { 
-  EmscriptenModule, 
+import { BasisModuleFuncs } from './index';
+import {
   BasisTextureFormat,
   TranscodeOptions,
-  TranscodeResult 
-} from './types.js';
-
+  TranscodeResult
+} from './types';
 
 export class KTX2Transcoder {
-  private readonly module: EmscriptenModule;
+  private readonly funcs: BasisModuleFuncs;
   private readonly imageLevelInfo: KTX2ImageLevelInfo;
   private transcoderPtr: number = 0;
-  private dataPtr: number = 0;
+  private inputMem = new Uint8Array();
+  private outputMem = new Uint8Array();
   private initialized = false;
+  private disposed = false;
 
-  constructor(module: EmscriptenModule) {
-    this.module = module;
-    this.transcoderPtr = this.module.ccall('ktx2_transcoder_new', 'number', [], []);
-    this.imageLevelInfo = new KTX2ImageLevelInfo(this.module);
+  constructor(funcs: BasisModuleFuncs) {
+    this.funcs = funcs;
+    this.transcoderPtr = funcs.ktx2_transcoder_new();
+    this.imageLevelInfo = new KTX2ImageLevelInfo(funcs);
   }
 
   /**
    * Initialize the transcoder with KTX2 file data
    */
   init(data: Uint8Array): boolean {
-    if (this.dataPtr) {
-      this.module._free(this.dataPtr);
+    this.checkDisposed();
+  
+    // Allocate memory
+    if (this.inputMem.length < data.length) {
+      this.funcs.free(this.inputMem);
+      this.inputMem = this.funcs.malloc(data.length);
     }
 
-    // Allocate memory and copy data
-    this.dataPtr = this.module._malloc(data.length);
-    this.module.HEAPU8.set(data, this.dataPtr);
+    // Copy data
+    this.inputMem.set(data);
 
     // Initialize the transcoder
-    const success = this.module.ccall(
-      'ktx2_transcoder_init',
-      'boolean',
-      ['number', 'number', 'number'],
-      [this.transcoderPtr, this.dataPtr, data.length]
-    );
-
+    const success = this.funcs.ktx2_transcoder_init(this.transcoderPtr, this.inputMem.byteOffset, data.length);
     if (success) {
       this.initialized = true;
     }
@@ -50,34 +48,25 @@ export class KTX2Transcoder {
    * Get the basis texture format
    */
   getBasisTextureFormat(): BasisTextureFormat {
+    this.checkDisposed();
     this.checkInitialized();
-    
-    return this.module.ccall(
-      'ktx2_transcoder_get_basis_tex_format',
-      'number',
-      ['number'],
-      [this.transcoderPtr]
-    );
+    return this.funcs.ktx2_transcoder_get_basis_texture_format(this.transcoderPtr);
   }
 
   /**
    * Start transcoding (must be called before transcoding images)
    */
   startTranscoding(): boolean {
+    this.checkDisposed();
     this.checkInitialized();
-    
-    return this.module.ccall(
-      'ktx2_transcoder_start_transcoding',
-      'boolean',
-      ['number'],
-      [this.transcoderPtr]
-    );
+    return this.funcs.ktx2_transcoder_start_transcoding(this.transcoderPtr);
   }
 
   /**
    * Transcode an image level
    */
   transcodeImageLevel(options: TranscodeOptions): TranscodeResult | null {
+    this.checkDisposed();
     this.checkInitialized();
 
     const {
@@ -94,101 +83,81 @@ export class KTX2Transcoder {
     const origHeight = imageLevelInfo.origHeight;
 
     // Calculate output size
-    const outputSize = this.module.ccall(
-      'basis_compute_transcoded_image_size_in_bytes',
-      'number',
-      ['number', 'number', 'number'],
-      [format, origWidth, origHeight]
-    );
+    const outputSize = this.funcs.basis_compute_transcoded_image_size_in_bytes(format, origWidth, origHeight);
 
     // Allocate output buffer
-    const outputPtr = this.module._malloc(outputSize);
-    
-    try {
-      const uncompressed = this.module.ccall(
-        'basis_transcoder_format_is_uncompressed',
-        'boolean',
-        ['number'],
-        [format]
-      );
-
-      let args: number[];
-      if (uncompressed) {
-          args = [
-              this.transcoderPtr, level, layer, face,
-              outputPtr, origWidth * origHeight, format,
-              decodeFlags, origWidth, origHeight, -1, -1, 0];
-      } else {
-          const bytesPerBlock = this.module.ccall(
-            'basis_get_bytes_per_block_or_pixel',
-            'number',
-            ['number'],
-            [format]
-          );
-          args = [
-              this.transcoderPtr, level, layer, face,
-              outputPtr, outputSize / bytesPerBlock, format,
-              decodeFlags, 0, 0, -1, -1, 0];
-      }
-
-
-      // Transcode
-      const success = this.module.ccall(
-        'transcode_image_level',
-        'boolean',
-        ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number'],
-        args
-      );
-
-      if (!success) {
-        return null;
-      }
-
-      // Copy result data
-      const resultData = new Uint8Array(outputSize);
-      resultData.set(this.module.HEAPU8.subarray(outputPtr, outputPtr + outputSize));
-
-      const hasAlpha = this.module.ccall(
-        'basis_transcoder_format_has_alpha',
-        'boolean',
-        ['number'],
-        [format]
-      );
-
-      return {
-        data: resultData,
-        width: origWidth,
-        height: origHeight,
-        format,
-        hasAlpha
-      };
-    } finally {
-      this.module._free(outputPtr);
+    if (this.outputMem.length < outputSize) {
+      this.funcs.free(this.outputMem);
+      this.outputMem = this.funcs.malloc(outputSize);
     }
+
+    const uncompressed = this.funcs.basis_transcoder_format_is_uncompressed(format);
+
+    let args: Parameters<typeof this.funcs.ktx2_transcoder_transcode_image_level>;
+    if (uncompressed) {
+      args = [
+        this.transcoderPtr, level, layer, face,
+        this.outputMem.byteOffset, origWidth * origHeight, format,
+        decodeFlags, origWidth, origHeight, -1, -1, 0];
+    } else {
+      const bytesPerBlock = this.funcs.basis_get_bytes_per_block_or_pixel(format);
+      args = [
+        this.transcoderPtr, level, layer, face,
+        this.outputMem.byteOffset, outputSize / bytesPerBlock, format,
+        decodeFlags, 0, 0, -1, -1, 0];
+    }
+
+    // Transcode
+    const success = this.funcs.ktx2_transcoder_transcode_image_level(...args);
+
+    if (!success) {
+      return null;
+    }
+
+    // Build result data view
+    const resultData = new Uint8Array(this.outputMem.buffer, this.outputMem.byteOffset, outputSize);
+
+    return {
+      data: resultData,
+      width: origWidth,
+      height: origHeight,
+    };
+
   }
 
   /**
    * Clean up resources
    */
   dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+
     if (this.transcoderPtr) {
-      this.module.ccall('ktx2_transcoder_delete', 'void', ['number'], [this.transcoderPtr]);
+      this.funcs.ktx2_transcoder_delete(this.transcoderPtr);
       this.transcoderPtr = 0;
     }
-    
-    if (this.dataPtr) {
-      this.module._free(this.dataPtr);
-      this.dataPtr = 0;
-    }
-    
+
+    this.funcs.free(this.inputMem);
+    this.inputMem = new Uint8Array();
+    this.funcs.free(this.outputMem);
+    this.outputMem = new Uint8Array();
+
     this.initialized = false;
 
     this.imageLevelInfo.dispose();
+    this.disposed = true;
   }
 
   private checkInitialized(): void {
     if (!this.initialized) {
       throw new Error('KTX2 transcoder not initialized. Call init() with KTX2 data first.');
+    }
+  }
+
+  private checkDisposed(): void {
+    if (this.disposed) {
+      throw new Error('KTX2 transcoder already disposed.');
     }
   }
 }
@@ -208,7 +177,7 @@ export class KTX2Transcoder {
 // 	// The image's physical width/height, which will always be divisible by 4 pixels.
 // 	uint32_t m_width;
 // 	uint32_t m_height;
-      
+
 // 	// The texture's dimensions in 4x4 or 6x6 texel blocks.
 // 	uint32_t m_num_blocks_x;
 // 	uint32_t m_num_blocks_y;
@@ -228,28 +197,24 @@ export class KTX2Transcoder {
 // };
 
 export class KTX2ImageLevelInfo {
-  private readonly module: EmscriptenModule;
+  private readonly funcs: BasisModuleFuncs;
   private readonly dataView: Uint32Array;
 
-  constructor(module: EmscriptenModule, ) {
-    this.module = module;
+  constructor(funcs: BasisModuleFuncs) {
+    this.funcs = funcs;
     const structSize = 12 * 4 + 2 * 4;
-    const infoPtr = module._malloc(structSize);
-    this.dataView = new Uint32Array(this.module.HEAPU8.buffer, infoPtr, structSize);
+    const mem = funcs.malloc(structSize);
+    this.dataView = new Uint32Array(mem.buffer, mem.byteOffset, structSize / 4);
   }
 
   dispose(): void {
-    this.module._free(this.dataView.byteOffset);
+    this.funcs.free(this.dataView);
     (this.dataView as any) = null;
   }
 
   init(ktx2TranscoderPtr: number, level_index: number, layer_index: number, face_index: number) {
-    return this.module.ccall(
-      'ktx2_transcoder_get_image_level_info',
-      'boolean',
-      ['number', 'number', 'number', 'number'],
-      [ktx2TranscoderPtr, this.dataView.byteOffset, level_index, layer_index, face_index]
-    );
+    return this.funcs.ktx2_transcoder_get_image_level_info(
+      ktx2TranscoderPtr, this.dataView.byteOffset, level_index, layer_index, face_index);
   }
 
   get levelIndex(): number {

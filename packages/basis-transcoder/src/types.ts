@@ -105,6 +105,4 @@ export interface TranscodeResult {
   data: Uint8Array;
   width: number;
   height: number;
-  format: TranscoderTextureFormat;
-  hasAlpha: boolean;
 }

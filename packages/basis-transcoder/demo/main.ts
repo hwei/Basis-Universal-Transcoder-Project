@@ -3,14 +3,14 @@ import BasisUniversal, {
   TranscoderTextureFormat, 
   detectBestFormat, 
   isFormatSupported, 
-  getFormatName 
-} from '../src/index.js';
+  getFormatName, 
+  TranscodeResult
+} from '../src/index';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/+esm';
 
 class BasisDemo {
   private basisUniversal: BasisUniversal | null = null;
   private currentTranscoder: KTX2Transcoder | null = null;
-  private currentFileData: Uint8Array | null = null;
   private scene: THREE.Scene | null = null;
   private camera: THREE.OrthographicCamera | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -20,7 +20,7 @@ class BasisDemo {
     this.initializeUI();
     this.initializeThreeJS();
     this.detectPlatformSupport();
-    this.loadBasisModule();
+    this.loadTranscoder();
   }
 
   private initializeThreeJS() {
@@ -43,10 +43,12 @@ class BasisDemo {
     this.camera.position.z = 5;
   }
 
-  private async loadBasisModule() {
+  private async loadTranscoder() {
     try {
       console.log('Loading Basis Universal module...');
-      this.basisUniversal = await BasisUniversal.getInstance();
+      const basisUniversal = await BasisUniversal.getInstance();
+      this.basisUniversal = basisUniversal;
+      this.currentTranscoder = basisUniversal.createKTX2Transcoder();
       console.log('Basis Universal module loaded successfully');
       this.updateStatus('Ready to load files');
     } catch (error) {
@@ -104,19 +106,16 @@ class BasisDemo {
       this.updateStatus('Loading file...');
       
       const arrayBuffer = await file.arrayBuffer();
-      this.currentFileData = new Uint8Array(arrayBuffer);
+      const fileData = new Uint8Array(arrayBuffer);
       
-      if (!this.basisUniversal) {
-        throw new Error('Basis Universal module not loaded');
+      if (!this.currentTranscoder) {
+        throw new Error('No transcoder instance available');
       }
 
       // Clean up previous transcoder
-      if (this.currentTranscoder) {
-        this.currentTranscoder.dispose();
+      if (!this.currentTranscoder.init(fileData)) {
+        throw new Error('Failed to initialize KTX2 transcoder');
       }
-
-      // Create new transcoder
-      this.currentTranscoder = this.basisUniversal.createKTX2Transcoder(this.currentFileData);
 
       this.updateStatus('File loaded successfully');
       
@@ -135,7 +134,7 @@ class BasisDemo {
     try {
       this.updateStatus('Transcoding...');
       
-      const targetFormat = parseInt((document.getElementById('targetFormat') as HTMLSelectElement).value);
+      const targetFormat = parseInt((document.getElementById('targetFormat') as HTMLSelectElement).value) as TranscoderTextureFormat;
       const mipLevel = parseInt((document.getElementById('mipLevel') as HTMLSelectElement).value);
       
       const startTime = performance.now();
@@ -145,7 +144,7 @@ class BasisDemo {
       }
       
       const result = this.currentTranscoder.transcodeImageLevel({
-        format: targetFormat as TranscoderTextureFormat,
+        format: targetFormat,
         level: mipLevel
       });
       
@@ -155,7 +154,7 @@ class BasisDemo {
         throw new Error('Transcoding failed');
       }
       
-      this.displayResult(result, endTime - startTime);
+      this.displayResult(result, targetFormat, endTime - startTime);
       this.updateStatus('Transcoding completed successfully');
       
     } catch (error) {
@@ -196,14 +195,16 @@ class BasisDemo {
     }
   }
 
-  private displayResult(result: any, duration: number) {
+  private displayResult(result: TranscodeResult, format: TranscoderTextureFormat, duration: number) {
+    const hasAlpha = this.basisUniversal?.funcs.basis_transcoder_format_has_alpha(format);
+
     // Display transcoding info
     const transcodeInfo = document.getElementById('transcodeInfo')!;
     transcodeInfo.innerHTML = `
-      <div><strong>Output Format:</strong> ${getFormatName(result.format)}</div>
+      <div><strong>Output Format:</strong> ${getFormatName(format)}</div>
       <div><strong>Dimensions:</strong> ${result.width} × ${result.height}</div>
       <div><strong>Data Size:</strong> ${this.formatBytes(result.data.length)}</div>
-      <div><strong>Has Alpha:</strong> ${result.hasAlpha ? 'Yes' : 'No'}</div>
+      <div><strong>Has Alpha:</strong> ${hasAlpha ? 'Yes' : 'No'}</div>
     `;
     
     // Display performance info
@@ -214,16 +215,16 @@ class BasisDemo {
     `;
     
     // 使用 Three.js 显示纹理
-    this.displayTextureWithThreeJS(result);
+    this.displayTextureWithThreeJS(result, format);
   }
 
-  private displayTextureWithThreeJS(result: any) {
+  private displayTextureWithThreeJS(result: TranscodeResult, format: TranscoderTextureFormat) {
     if (!this.scene || !this.camera || !this.renderer) {
       console.error('Three.js not initialized');
       return;
     }
 
-    const { data, width, height, format } = result;
+    const { data, width, height  } = result;
     
     // 移除之前的网格
     if (this.currentMesh) {
@@ -261,6 +262,7 @@ class BasisDemo {
     
     // 检查是否为压缩格式
     const threeJSFormat = this.getThreeJSFormat(format);
+    console.log(`threeJSFormat format: ${threeJSFormat}`);
     
     if (threeJSFormat !== null) {
       // 创建压缩纹理
@@ -328,9 +330,10 @@ class BasisDemo {
     }
 
     // 创建材质和几何体
+    const hasAlpha = this.basisUniversal?.funcs.basis_transcoder_format_has_alpha(format);
     const material = new THREE.MeshBasicMaterial({ 
       map: texture,
-      transparent: result.hasAlpha,
+      transparent: hasAlpha,
       side: THREE.DoubleSide
     });
     
@@ -370,11 +373,6 @@ class BasisDemo {
       ctx.textBaseline = 'middle';
       ctx.fillText(message, canvas.width / 2, canvas.height / 2);
     }
-  }
-
-  private displayImageData(data: Uint8Array, width: number, height: number) {
-    // 保留原始方法作为备用，但现在主要使用 Three.js
-    console.log('displayImageData called, but using Three.js instead');
   }
 
   private detectPlatformSupport() {

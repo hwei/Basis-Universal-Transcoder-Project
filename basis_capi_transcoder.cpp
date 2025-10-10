@@ -113,7 +113,7 @@ bool ktx2_transcoder_get_image_level_info(const basist::ktx2_transcoder* self, b
 }
 
 EMSCRIPTEN_KEEPALIVE
-bool transcode_image_level(
+bool ktx2_transcoder_transcode_image_level(
     basist::ktx2_transcoder* self,
     uint32_t level_index, uint32_t layer_index, uint32_t face_index,
     void* pOutput_blocks, uint32_t output_blocks_buf_size_in_blocks_or_pixels,
