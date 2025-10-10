@@ -18,9 +18,11 @@ export default defineConfig({
       fileName: (format) => `index.${format === 'es' ? 'js' : 'umd.cjs'}`
     },
     rollupOptions: {
-      external: [],
+      external: ['three'],
       output: {
-        globals: {}
+        globals: {
+          three: 'THREE'
+        }
       }
     },
     copyPublicDir: true
@@ -31,5 +33,8 @@ export default defineConfig({
       allow: ['..', '../..']
     }
   },
-  publicDir: 'public'
+  publicDir: 'public',
+  optimizeDeps: {
+    include: ['three']
+  }
 })

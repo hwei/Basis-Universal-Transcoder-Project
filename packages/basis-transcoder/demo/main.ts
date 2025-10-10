@@ -6,7 +6,7 @@ import BasisUniversal, {
   getFormatName, 
   TranscodeResult
 } from '../src/index';
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/+esm';
+import * as THREE from 'three';
 
 class BasisDemo {
   private basisUniversal: BasisUniversal | null = null;
@@ -14,7 +14,7 @@ class BasisDemo {
   private scene: THREE.Scene | null = null;
   private camera: THREE.OrthographicCamera | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
-  private currentMesh: THREE.Mesh | null = null;
+  private currentMesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null = null;
 
   constructor() {
     this.initializeUI();
@@ -163,7 +163,7 @@ class BasisDemo {
     }
   }
 
-  private getThreeJSFormat(format: TranscoderTextureFormat): number | null {
+  private getThreeJSFormat(format: TranscoderTextureFormat): THREE.CompressedPixelFormat | null {
     // 映射 TranscoderTextureFormat 到 Three.js 压缩纹理格式
     switch (format) {
       case TranscoderTextureFormat.cTFBC1_RGB:
@@ -301,7 +301,7 @@ class BasisDemo {
         width,
         height,
         THREE.RGBFormat,
-        THREE.UnsignedShort565Type
+        THREE.UnsignedShort5551Type
       );
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -394,7 +394,7 @@ class BasisDemo {
     });
     
     // Set recommended format as default
-    const bestFormat = detectBestFormat(this.renderer.getContext());
+    const bestFormat = detectBestFormat(this.renderer?.getContext() as any);
     const targetFormatSelect = document.getElementById('targetFormat') as HTMLSelectElement;
     targetFormatSelect.value = bestFormat.toString();
     this.updateFormatSupport();

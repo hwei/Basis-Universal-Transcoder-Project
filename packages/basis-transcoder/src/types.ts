@@ -102,7 +102,7 @@ export interface TranscodeOptions {
 }
 
 export interface TranscodeResult {
-  data: Uint8Array;
+  data: Uint8Array<ArrayBuffer>;
   width: number;
   height: number;
 }
