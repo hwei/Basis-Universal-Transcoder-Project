@@ -49,7 +49,8 @@ export default defineConfig({
     port: 3150,
     fs: {
       allow: ['..', '../..']
-    }
+    },
+    open: '/demo/index.html'
   },
   publicDir: 'public',
   optimizeDeps: {
