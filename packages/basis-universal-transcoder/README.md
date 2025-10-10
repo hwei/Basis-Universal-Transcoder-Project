@@ -6,10 +6,10 @@ A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 
 - 🚀 High-performance WebAssembly implementation
 - 📦 TypeScript support with full type definitions
-- 🎯 Support for KTX2 and Basis Universal files
+- 🎯 Support for KTX2 files only
 - 🔧 Multiple output formats (BC1-7, ASTC, PVRTC, ETC, uncompressed)
 - 🌐 Works in both browser and Node.js environments
-- ⚡ Built with Vite for modern development
+- ⚡ Built with Vite using custom configuration to prevent WASM inlining
 
 ## Installation
 
@@ -22,20 +22,20 @@ npm install basis-universal-transcoder
 ### Basic Usage
 
 ```typescript
-import BasisUniversal from 'basis-universal-transcoder';
+import { BasisUniversal } from 'basis-universal-transcoder';
 
-// Initialize the transcoder
-const transcoder = await BasisUniversal.create();
+// Initialize the module
+const basisUniversal = await BasisUniversal.getInstance();
 
 // Load a KTX2 file
 const fileData = await fetch('texture.ktx2').then(r => r.arrayBuffer());
 const ktx2Data = new Uint8Array(fileData);
 
 // Create a KTX2 transcoder
-const ktx2Transcoder = transcoder.createKTX2Transcoder(ktx2Data);
+const ktx2Transcoder = basisUniversal.createKTX2Transcoder();
 
-// Start transcoding
-if (ktx2Transcoder.startTranscoding()) {
+// Initialize with KTX2 data
+if (ktx2Transcoder.init(ktx2Data) && ktx2Transcoder.startTranscoding()) {
     // Transcode to RGBA32 format
     const result = ktx2Transcoder.transcodeImageLevel({
         format: TranscoderTextureFormat.cTFRGBA32,
@@ -60,8 +60,10 @@ ktx2Transcoder.dispose();
 ```typescript
 import { detectBestFormat, isFormatSupported, getFormatName } from 'basis-universal-transcoder';
 
-// Detect the best format for the current platform
-const bestFormat = detectBestFormat();
+// Detect the best format for the current platform (requires WebGL context)
+const canvas = document.createElement('canvas');
+const gl = canvas.getContext('webgl');
+const bestFormat = detectBestFormat(gl);
 console.log('Best format:', getFormatName(bestFormat));
 
 // Check if a specific format is supported
@@ -75,17 +77,18 @@ if (isFormatSupported(TranscoderTextureFormat.cTFBC7_RGBA)) {
 ```typescript
 import { BasisUniversal, KTX2Transcoder, TranscoderTextureFormat } from 'basis-universal-transcoder';
 
-const transcoder = await BasisUniversal.create();
-const ktx2Transcoder = transcoder.createKTX2Transcoder(data);
+const transcoder = await BasisUniversal.getInstance();
+const ktx2Transcoder = transcoder.createKTX2Transcoder();
+ktx2Transcoder.init(data);
 
-// Get file information
-const header = ktx2Transcoder.getHeader();
-console.log('Dimensions:', header.pixelWidth, 'x', header.pixelHeight);
-console.log('Mip levels:', header.levelCount);
+// Get basis texture format
+const basisFormat = ktx2Transcoder.getBasisTextureFormat();
+console.log('Basis format:', basisFormat);
 
 // Transcode multiple mip levels
 const results = [];
-for (let level = 0; level < header.levelCount; level++) {
+ktx2Transcoder.startTranscoding();
+for (let level = 0; level < 4; level++) { // Adjust based on your texture
     const result = ktx2Transcoder.transcodeImageLevel({
         format: TranscoderTextureFormat.cTFBC7_RGBA,
         level: level
@@ -106,21 +109,19 @@ ktx2Transcoder.dispose();
 
 Main class for managing the transcoder module.
 
-- `static create(wasmPath?: string): Promise<BasisUniversal>`
-- `createKTX2Transcoder(data: Uint8Array): KTX2Transcoder`
-- `getTranscoder(): BasisTranscoder`
-- `getModule(): EmscriptenModule`
+- `static getInstance(): Promise<BasisUniversal>`
+- `static getInstanceWithCustomWasm(wasm: BufferSource): Promise<BasisUniversal>`
+- `createKTX2Transcoder(): KTX2Transcoder`
 
 #### `KTX2Transcoder`
 
 Handles KTX2 file transcoding.
 
-- `init(data: Uint8Array): boolean`
-- `getHeader(): KTX2Header | null`
-- `getBasisTextureFormat(): BasisTextureFormat`
-- `startTranscoding(): boolean`
-- `transcodeImageLevel(options: TranscodeOptions): TranscodeResult | null`
-- `dispose(): void`
+- `init(data: Uint8Array): boolean` - Initialize with KTX2 file data
+- `getBasisTextureFormat(): BasisTextureFormat` - Get the basis texture format
+- `startTranscoding(): boolean` - Start transcoding (call after init)
+- `transcodeImageLevel(options: TranscodeOptions): TranscodeResult | null` - Transcode a specific level
+- `dispose(): void` - Clean up resources
 
 ### Enums
 
@@ -138,10 +139,9 @@ Supported output texture formats:
 
 ### Utility Functions
 
-- `detectBestFormat(): TranscoderTextureFormat`
-- `isFormatSupported(format: TranscoderTextureFormat): boolean`
-- `getFormatName(format: TranscoderTextureFormat): string`
-- `loadFile(path: string): Promise<Uint8Array>`
+- `detectBestFormat(gl: WebGLRenderingContext): TranscoderTextureFormat` - Detect best format for WebGL context
+- `isFormatSupported(format: TranscoderTextureFormat): boolean` - Check if format is supported on current platform
+- `getFormatName(format: TranscoderTextureFormat): string` - Get human-readable format name
 
 ## Development
 
@@ -152,10 +152,10 @@ Supported output texture formats:
 npm install
 
 # Build WASM module (requires Emscripten)
-./scripts/build-wasm.sh
+../../scripts/build-wasm.sh
 
-# Copy WASM files and build package
-./scripts/build-all.sh
+# Build everything (WASM + package)
+../../scripts/build-all.sh
 
 # Start development server
 npm run dev
@@ -178,11 +178,11 @@ Then open your browser to see the interactive demo.
 
 ## Node.js Support
 
-- Node.js 14+ with experimental WebAssembly support
+- Node.js 16+ with WebAssembly support
 
 ## License
 
-Apache-2.0
+MIT
 
 ## Contributing
 

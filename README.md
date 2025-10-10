@@ -9,14 +9,13 @@ This project provides a WebAssembly-based Basis Universal texture transcoder wit
 ├── CMakeLists.txt                 # WASM compilation configuration
 ├── basis_capi_transcoder.cpp      # C++ API wrapper for Emscripten
 ├── extern/                        # External dependencies (Basis Universal)
-├── build/                         # WASM compilation output
+├── build/                         # WASM compilation output (generated)
 ├── packages/                      # NPM packages
-│   └── basis-transcoder/          # Main TypeScript package
+│   └── basis-universal-transcoder/ # Main TypeScript package
 │       ├── src/                   # TypeScript source code
 │       ├── demo/                  # Interactive demo
-│       └── dist/                  # Built package output
-├── scripts/                       # Build automation scripts
-└── www/                          # Legacy test files
+│       └── dist/                  # Built package output (generated)
+└── scripts/                       # Build automation scripts
 ```
 
 ## Quick Start
@@ -32,7 +31,7 @@ This project provides a WebAssembly-based Basis Universal texture transcoder wit
 ```bash
 # Clone with submodules
 git clone --recursive <your-repo-url>
-cd basis-transcoder-project
+cd basis-universal-transcoder
 
 # Build everything (WASM + NPM package)
 ./scripts/build-all.sh
@@ -41,12 +40,12 @@ cd basis-transcoder-project
 ### Development Workflow
 
 1. **WASM Development**: Modify `basis_capi_transcoder.cpp` and rebuild with `./scripts/build-wasm.sh`
-2. **Package Development**: Work in `packages/basis-transcoder/src/` and use `npm run dev`
-3. **Demo Testing**: Use the interactive demo at `packages/basis-transcoder/demo/`
+2. **Package Development**: Work in `packages/basis-universal-transcoder/src/` and use `npm run dev`
+3. **Demo Testing**: Use the interactive demo at `packages/basis-universal-transcoder/demo/`
 
 ## Package Usage
 
-The main deliverable is the NPM package in `packages/basis-transcoder/`. See its README for detailed usage instructions.
+The main deliverable is the NPM package in `packages/basis-universal-transcoder/`. See its README for detailed usage instructions.
 
 ```typescript
 import BasisUniversal from 'basis-universal-transcoder';
@@ -60,12 +59,11 @@ const transcoder = await BasisUniversal.create();
 ### WASM Building
 ```bash
 ./scripts/build-wasm.sh        # Build WASM module only
-./scripts/copy-wasm.sh         # Copy WASM files to package
 ```
 
 ### Package Development
 ```bash
-cd packages/basis-transcoder
+cd packages/basis-universal-transcoder
 npm run dev                    # Start development server
 npm run build                  # Build package for distribution
 npm run preview                # Preview built package
@@ -84,13 +82,13 @@ npm run preview                # Preview built package
 - Handles KTX2 and Basis file formats
 - Optimized for size and performance
 
-### TypeScript Layer (`packages/basis-transcoder/src/`)
+### TypeScript Layer (`packages/basis-universal-transcoder/src/`)
 - Type-safe wrapper around WASM functions
 - High-level API for easy integration
 - Platform detection and format optimization
 - Browser and Node.js compatibility
 
-### Demo Application (`packages/basis-transcoder/demo/`)
+### Demo Application (`packages/basis-universal-transcoder/demo/`)
 - Interactive web interface
 - File drag-and-drop support
 - Real-time transcoding with performance metrics
@@ -99,9 +97,10 @@ npm run preview                # Preview built package
 ## Build Configuration
 
 ### Vite Configuration
-- ES modules and UMD builds
+- ES modules build with custom Rollup configuration
 - TypeScript declaration generation
-- WASM file handling
+- Special WASM file handling (prevents inlining, ensures separate .wasm files)
+- Asset optimization with relative paths
 - Development server with hot reload
 
 ### CMake Configuration
@@ -113,7 +112,7 @@ npm run preview                # Preview built package
 ## Publishing
 
 ```bash
-cd packages/basis-transcoder
+cd packages/basis-universal-transcoder
 npm run build
 npm publish
 ```
@@ -128,7 +127,7 @@ npm publish
 
 ## License
 
-Apache-2.0
+MIT
 
 ## Acknowledgments
 
