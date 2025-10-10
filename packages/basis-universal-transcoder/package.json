@@ -10,7 +10,8 @@
     ".": {
       "import": "./dist/index.mjs",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./assets/*": "./dist/assets/*"
   },
   "files": [
     "dist",

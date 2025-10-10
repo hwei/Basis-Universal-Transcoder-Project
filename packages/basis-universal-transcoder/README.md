@@ -196,6 +196,20 @@ Supported output texture formats:
 - `cTFRGBA32` - 32-bit RGBA uncompressed
 - And more...
 
+### Direct WASM Access
+
+You can also directly import and use the WASM file for custom loading scenarios:
+
+```typescript
+// Import WASM file directly
+import wasmUrl from '@hwei/basis-universal-transcoder/assets/basis_capi_transcoder.wasm?url';
+
+// Custom WASM loading
+const response = await fetch(wasmUrl);
+const wasmBuffer = await response.arrayBuffer();
+const basisUniversal = await BasisUniversal.getInstanceWithCustomWasm(wasmBuffer);
+```
+
 ### Utility Functions
 
 - `detectBestFormat(gl: WebGLRenderingContext): TranscoderTextureFormat` - Detect best format for WebGL context
