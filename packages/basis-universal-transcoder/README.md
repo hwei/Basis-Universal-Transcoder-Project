@@ -101,6 +101,65 @@ for (let level = 0; level < 4; level++) { // Adjust based on your texture
 ktx2Transcoder.dispose();
 ```
 
+## ⚠️ Important: Memory Management
+
+### Data Persistence Warning
+
+**Critical**: The `TranscodeResult.data` returned by `transcodeImageLevel()` references WASM-managed memory and will become **invalid** after the next call to `transcodeImageLevel()`. 
+
+If you need to persist the transcoded data, you **must** create a copy:
+
+```typescript
+const result = ktx2Transcoder.transcodeImageLevel({
+  format: TranscoderTextureFormat.cTFBC7_RGBA,
+  level: 0
+});
+
+if (result) {
+  // ❌ WRONG: This data will become invalid after next transcodeImageLevel() call
+  const imageData = result.data;
+  
+  // ✅ CORRECT: Create a copy to persist the data
+  const persistentData = new Uint8Array(result.data);
+  // or
+  const persistentData = result.data.slice();
+}
+```
+
+### Performance Optimization
+
+**Tip**: Reuse the same `KTX2Transcoder` instance for multiple textures by calling `init()` multiple times. This reduces memory allocation overhead:
+
+```typescript
+// Create transcoder once
+const transcoder = await BasisUniversal.getInstance();
+const ktx2Transcoder = transcoder.createKTX2Transcoder();
+
+// Process multiple textures efficiently
+async function processTextures(textureDataArray: Uint8Array[]) {
+  for (const textureData of textureDataArray) {
+    // Reuse the same transcoder instance
+    if (ktx2Transcoder.init(textureData)) {
+      ktx2Transcoder.startTranscoding();
+      
+      const result = ktx2Transcoder.transcodeImageLevel({
+        format: TranscoderTextureFormat.cTFBC7_RGBA,
+        level: 0
+      });
+      
+      if (result) {
+        // Create copy if you need to persist the data
+        const persistentData = new Uint8Array(result.data);
+        // Process the texture data...
+      }
+    }
+  }
+}
+
+// Don't forget to dispose when done
+ktx2Transcoder.dispose();
+```
+
 ## API Reference
 
 ### Classes
@@ -115,9 +174,9 @@ Main class for managing the transcoder module.
 
 #### `KTX2Transcoder`
 
-Handles KTX2 file transcoding.
+Handles KTX2 file transcoding. Can be reused for multiple textures by calling `init()` multiple times for better performance.
 
-- `init(data: Uint8Array): boolean` - Initialize with KTX2 file data
+- `init(data: Uint8Array): boolean` - Initialize with KTX2 file data (can be called multiple times)
 - `getBasisTextureFormat(): BasisTextureFormat` - Get the basis texture format
 - `startTranscoding(): boolean` - Start transcoding (call after init)
 - `transcodeImageLevel(options: TranscodeOptions): TranscodeResult | null` - Transcode a specific level

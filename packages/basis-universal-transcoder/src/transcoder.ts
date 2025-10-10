@@ -22,6 +22,13 @@ export class KTX2Transcoder {
 
   /**
    * Initialize the transcoder with KTX2 file data
+   * 
+   * Performance tip: You can reuse the same KTX2Transcoder instance by calling
+   * init() multiple times with different KTX2 data. This reduces memory allocation
+   * overhead compared to creating new transcoder instances.
+   * 
+   * @param data KTX2 file data as Uint8Array
+   * @returns true if initialization succeeded, false otherwise
    */
   init(data: Uint8Array): boolean {
     this.checkDisposed();
@@ -64,6 +71,14 @@ export class KTX2Transcoder {
 
   /**
    * Transcode an image level
+   * 
+   * ⚠️ IMPORTANT: The returned TranscodeResult.data references WASM-managed memory
+   * and will become invalid after the next call to this method. If you need to
+   * persist the data, create a copy using new Uint8Array(result.data) or 
+   * result.data.slice() before calling this method again.
+   * 
+   * @param options Transcoding options including format, level, layer, face
+   * @returns TranscodeResult with image data, or null if transcoding failed
    */
   transcodeImageLevel(options: TranscodeOptions): TranscodeResult | null {
     this.checkDisposed();

@@ -102,6 +102,14 @@ export interface TranscodeOptions {
 }
 
 export interface TranscodeResult {
+  /**
+   * Transcoded image data.
+   * 
+   * ⚠️ IMPORTANT: This Uint8Array references WASM-managed memory and will become 
+   * invalid after the next call to transcodeImageLevel(). If you need to persist 
+   * this data, you MUST create a copy using new Uint8Array(result.data) or 
+   * result.data.slice() before calling transcodeImageLevel() again.
+   */
   data: Uint8Array<ArrayBuffer>;
   width: number;
   height: number;

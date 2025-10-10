@@ -45,12 +45,15 @@ cd basis-universal-transcoder
 
 ## Package Usage
 
-The main deliverable is the NPM package `@hwei/basis-universal-transcoder` in `packages/basis-universal-transcoder/`. See its README for detailed usage instructions.
+The main deliverable is the NPM package `@hwei/basis-universal-transcoder` in `packages/basis-universal-transcoder/`. 
+
+📖 **[See the package README for detailed usage instructions →](packages/basis-universal-transcoder/README.md)**
 
 ```typescript
 import { BasisUniversal } from '@hwei/basis-universal-transcoder';
 
-const transcoder = await BasisUniversal.create();
+const basisUniversal = await BasisUniversal.getInstance();
+const ktx2Transcoder = basisUniversal.createKTX2Transcoder();
 // ... use the transcoder
 ```
 
