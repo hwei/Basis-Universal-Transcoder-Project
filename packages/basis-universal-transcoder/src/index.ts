@@ -5,15 +5,15 @@
  * texture transcoder compiled to WebAssembly.
  */
 
-import { EmscriptenModule, TranscoderTextureFormat } from './types';
-import { KTX2Transcoder } from './transcoder';
+import { EmscriptenModule, TranscoderTextureFormat } from './types.js';
+import { KTX2Transcoder } from './transcoder.js';
 import basis_capi_transcoder_wasm_url from '../../../build/basis_capi_transcoder.wasm?url';
 import basis_capi_transcoder_js from '../../../build/basis_capi_transcoder.js';
 
 // Re-export types and utilities
-export * from './types';
-export * from './transcoder';
-export * from './utils';
+export * from './types.js';
+export * from './transcoder.js';
+export * from './utils.js';
 
 const BasisFuncProtos = {
   basisu_transcoder_init: () => {},
