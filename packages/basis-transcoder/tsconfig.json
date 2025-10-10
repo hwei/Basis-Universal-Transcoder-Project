@@ -19,6 +19,7 @@
     "declarationMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "types": ["vite/client"]
   },
   "include": ["src/**/*", "demo/**/*"],
   "exclude": ["node_modules", "dist"]

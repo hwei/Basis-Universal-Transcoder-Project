@@ -36,5 +36,6 @@ export default defineConfig({
   publicDir: 'public',
   optimizeDeps: {
     include: ['three']
-  }
+  },
+  assetsInclude: ['**/*.wasm']
 })
