@@ -11,7 +11,7 @@ This project provides a WebAssembly-based Basis Universal texture transcoder wit
 ├── extern/                        # External dependencies (Basis Universal)
 ├── build/                         # WASM compilation output (generated)
 ├── packages/                      # NPM packages
-│   └── basis-universal-transcoder/ # Main TypeScript package
+│   └── basis-universal-transcoder/ # Main TypeScript package (@hwei/basis-universal-transcoder)
 │       ├── src/                   # TypeScript source code
 │       ├── demo/                  # Interactive demo
 │       └── dist/                  # Built package output (generated)
@@ -45,10 +45,10 @@ cd basis-universal-transcoder
 
 ## Package Usage
 
-The main deliverable is the NPM package in `packages/basis-universal-transcoder/`. See its README for detailed usage instructions.
+The main deliverable is the NPM package `@hwei/basis-universal-transcoder` in `packages/basis-universal-transcoder/`. See its README for detailed usage instructions.
 
 ```typescript
-import BasisUniversal from 'basis-universal-transcoder';
+import { BasisUniversal } from '@hwei/basis-universal-transcoder';
 
 const transcoder = await BasisUniversal.create();
 // ... use the transcoder
