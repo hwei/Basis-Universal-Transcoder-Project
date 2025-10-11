@@ -17,11 +17,22 @@ export default defineConfig({
       formats: ['es'],
     },
     sourcemap: true,
+    // 最小化代码变换 - 只做 TS 到 JS 转换
+    minify: false,
+    target: 'esnext',
     rollupOptions: {
       output: {
         entryFileNames: '[name].mjs',
         chunkFileNames: '[name]-[hash].mjs',
-      }
+        format: 'es',
+        // 保持原始代码结构，不进行额外的变换
+        compact: false,
+        indent: '  ',
+      },
+      // 保持所有依赖内联
+      external: [],
+      // 严格保持入口签名
+      preserveEntrySignatures: 'strict',
     }
   },
   
