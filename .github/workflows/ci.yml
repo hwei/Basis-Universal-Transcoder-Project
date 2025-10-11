@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/basis-universal-transcoder/package-lock.json
+          
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.45'
+          
+      - name: Build WASM
+        run: |
+          cd packages/basis-universal-transcoder
+          chmod +x ../../scripts/build-wasm.sh
+          ../../scripts/build-wasm.sh
+          
+      - name: Install dependencies
+        run: |
+          cd packages/basis-universal-transcoder
+          npm ci
+          
+      - name: Type check
+        run: |
+          cd packages/basis-universal-transcoder
+          npx tsc --noEmit
+          
+      - name: Build package
+        run: |
+          cd packages/basis-universal-transcoder
+          npm run build
+          
+      - name: Run tests
+        run: |
+          cd packages/basis-universal-transcoder
+          npm test --if-present

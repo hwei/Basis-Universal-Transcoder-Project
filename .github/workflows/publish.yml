@@ -1,0 +1,56 @@
+name: Build and Publish to NPM
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 v* 标签时触发（如 v1.0.0）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive  # 由于你有 git submodules
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.45'
+          
+      - name: Build WASM
+        run: |
+          cd packages/basis-universal-transcoder
+          chmod +x ../../scripts/build-wasm.sh
+          ../../scripts/build-wasm.sh
+          
+      - name: Install dependencies
+        run: |
+          cd packages/basis-universal-transcoder
+          npm ci
+          
+      - name: Build package
+        run: |
+          cd packages/basis-universal-transcoder
+          npm run build
+          
+      - name: Run tests (if available)
+        run: |
+          cd packages/basis-universal-transcoder
+          npm test --if-present
+          
+      - name: Publish to NPM
+        run: |
+          cd packages/basis-universal-transcoder
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
