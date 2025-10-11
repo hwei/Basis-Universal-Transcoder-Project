@@ -18,6 +18,12 @@ export default defineConfig({
       formats: ['es'],
     },
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].mjs',
+        chunkFileNames: '[name]-[hash].mjs',
+      }
+    }
   },
   
   server: {
