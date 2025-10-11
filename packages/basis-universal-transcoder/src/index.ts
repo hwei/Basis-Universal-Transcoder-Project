@@ -7,7 +7,6 @@
 
 import { EmscriptenModule, TranscoderTextureFormat } from './types.js';
 import { KTX2Transcoder } from './transcoder.js';
-import basis_capi_transcoder_wasm_url from '../../../build/basis_capi_transcoder.wasm?url';
 import basis_capi_transcoder_js from '../../../build/basis_capi_transcoder_patched.js';
 
 // Re-export types and utilities
@@ -16,14 +15,14 @@ export * from './transcoder.js';
 export * from './utils.js';
 
 const BasisFuncProtos = {
-  basisu_transcoder_init: () => {},
+  basisu_transcoder_init: () => { },
   basis_transcoder_format_has_alpha: (_format: TranscoderTextureFormat) => false,
   basis_transcoder_format_is_hdr: (_format: TranscoderTextureFormat) => false,
   basis_transcoder_format_is_uncompressed: (_format: TranscoderTextureFormat) => false,
   basis_get_bytes_per_block_or_pixel: (_format: TranscoderTextureFormat) => 0,
   basis_compute_transcoded_image_size_in_bytes: (_format: TranscoderTextureFormat, _width: number, _height: number) => 0,
   ktx2_transcoder_new: () => 0,
-  ktx2_transcoder_delete: (_transcoderPtr: number) => {},
+  ktx2_transcoder_delete: (_transcoderPtr: number) => { },
   ktx2_transcoder_init: (_transcoderPtr: number, _dataPtr: number, _dataSize: number) => false,
   ktx2_transcoder_get_header: (_transcoderPtr: number) => 0,
   ktx2_transcoder_get_basis_texture_format: (_transcoderPtr: number) => 0,
@@ -101,24 +100,15 @@ export class BasisUniversal {
   }
 
   /**
-   * Get or create a BasisUniversal instance
+   * Get or create a BasisUniversal instance with custom WASM loader
    */
-  static async getInstance(): Promise<BasisUniversal> {
-    return BasisUniversal.getInstanceInternal(initBasisModule);
-  }
-
-  /**
-   * Get or create a BasisUniversal instance with custom WASM
-   */
-  static async getInstanceWithCustomWasm(instantiateWasmAsync: InstantiateWasmAsync): Promise<BasisUniversal> {
-    return BasisUniversal.getInstanceInternal(() => initBasisModuleWithCustomWasm(instantiateWasmAsync));
-  }
-
-  private static async getInstanceInternal(getModuleAsync: () => Promise<EmscriptenModule>): Promise<BasisUniversal> {
+  static async getInstance(instantiateWasmAsync: InstantiateWasmAsync): Promise<BasisUniversal> {
     if (BasisUniversal.instance) {
       return BasisUniversal.instance;
     }
-    const module = await getModuleAsync();
+    const module = await basis_capi_transcoder_js({
+      instantiateWasmAsync,
+    }) as EmscriptenModule;
     const inst = new BasisUniversal(module);
     BasisUniversal.instance = inst;
     return inst;
@@ -133,32 +123,6 @@ export class BasisUniversal {
 }
 
 export type InstantiateWasmAsync = (imports: WebAssembly.Imports) => Promise<WebAssembly.WebAssemblyInstantiatedSource>;
-
-/**
- * Initialize the Basis Universal transcoder module
- */
-async function initBasisModule(): Promise<EmscriptenModule> {
-  const wasmResponse = await fetch(basis_capi_transcoder_wasm_url);
-  const wasmArrayBuffer = await wasmResponse.arrayBuffer();
-  const module = await basis_capi_transcoder_js({
-    instantiateWasmAsync(imports: any) {
-      return WebAssembly.instantiate(wasmArrayBuffer, imports);
-    },
-  });
-
-  return module as EmscriptenModule;
-}
-
-/**
- * Initialize the Basis Universal transcoder module with custom WASM
- */
-async function initBasisModuleWithCustomWasm(instantiateWasmAsync: InstantiateWasmAsync): Promise<EmscriptenModule> {
-  const module = await basis_capi_transcoder_js({
-    instantiateWasmAsync,
-  });
-
-  return module as EmscriptenModule;
-}
 
 function numberArgTypes(count: number) {
   return Array.from({ length: count }, () => 'number');

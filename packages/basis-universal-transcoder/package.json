@@ -11,7 +11,8 @@
       "import": "./dist/index.mjs",
       "types": "./dist/index.d.ts"
     },
-    "./assets/*": "./dist/assets/*"
+    "./basis_capi_transcoder.wasm": "./dist/basis_capi_transcoder.wasm",
+    "./*.wasm": "./dist/*.wasm"
   },
   "files": [
     "dist",

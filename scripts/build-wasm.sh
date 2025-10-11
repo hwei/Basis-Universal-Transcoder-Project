@@ -40,12 +40,25 @@ else
     echo "Warning: basis_capi_transcoder.js not found, patch not applied"
 fi
 
+# Copy WASM file to packages directory
+echo "Copying WASM file to packages directory..."
+PACKAGES_PUBLIC_DIR="../packages/basis-universal-transcoder/public"
+mkdir -p "$PACKAGES_PUBLIC_DIR"
+
+if [ -f "basis_capi_transcoder.wasm" ]; then
+    cp basis_capi_transcoder.wasm "$PACKAGES_PUBLIC_DIR/"
+    echo "Successfully copied basis_capi_transcoder.wasm to $PACKAGES_PUBLIC_DIR/"
+else
+    echo "Warning: basis_capi_transcoder.wasm not found, copy operation skipped"
+fi
+
 echo "Build completed successfully!"
 echo ""
 echo "Output files:"
 echo "  - build/basis_capi_transcoder.js (original Emscripten runtime)"
 echo "  - build/basis_capi_transcoder_patched.js (custom async instantiation runtime)"
 echo "  - build/basis_capi_transcoder.wasm"
+echo "  - packages/basis-universal-transcoder/public/basis_capi_transcoder.wasm (copied)"
 echo ""
 echo "Runtime behavior differences:"
 echo "  Original version:"

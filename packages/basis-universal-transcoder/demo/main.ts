@@ -8,6 +8,7 @@ import {
   TranscodeResult
 } from '../src/index';
 import * as THREE from 'three';
+import wasmUrl from '/basis_capi_transcoder.wasm?url';
 
 class BasisDemo {
   private basisUniversal: BasisUniversal | null = null;
@@ -47,7 +48,24 @@ class BasisDemo {
   private async loadTranscoder() {
     try {
       console.log('Loading Basis Universal module...');
-      const basisUniversal = await BasisUniversal.getInstance();
+      const basisUniversal = await BasisUniversal.getInstance(async (imports) => {
+        const fetchPromise = fetch(wasmUrl);
+        // 1. 尝试使用 instantiateStreaming（流式编译）
+        if (WebAssembly.instantiateStreaming) {
+          try {
+            return WebAssembly.instantiateStreaming(fetchPromise, imports);
+          } catch (e) {
+            console.warn('instantiateStreaming 失败，回退到 ArrayBuffer 方式:', e);
+            // 如果流式编译失败（例如 MIME 类型不正确），继续执行降级方案
+          }
+        }
+
+        // 2. 降级方案（手动编译）：
+        // 这适用于不支持 instantiateStreaming 的旧浏览器，或流式编译失败的情况
+        const response = await fetchPromise;
+        const buffer = await response.arrayBuffer(); // 获取 ArrayBuffer
+        return WebAssembly.instantiate(buffer, imports);
+      });
       this.basisUniversal = basisUniversal;
       this.currentTranscoder = basisUniversal.createKTX2Transcoder();
       console.log('Basis Universal module loaded successfully');
