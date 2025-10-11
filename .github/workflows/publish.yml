@@ -55,6 +55,16 @@ jobs:
           path: packages/basis-universal-transcoder/*.tgz
           retention-days: 90
           
+      - name: Upload Emscripten build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: emscripten-build-publish-${{ github.sha }}
+          path: |
+            build/*.js
+            build/*.wasm
+            build/*.map
+          retention-days: 90
+          
       - name: Run tests (if available)
         run: |
           cd packages/basis-universal-transcoder
