@@ -48,6 +48,18 @@ jobs:
           cd packages/basis-universal-transcoder
           npm run build
           
+      - name: Pack package for artifact
+        run: |
+          cd packages/basis-universal-transcoder
+          npm pack
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package-${{ github.sha }}
+          path: packages/basis-universal-transcoder/*.tgz
+          retention-days: 30
+          
       - name: Run tests
         run: |
           cd packages/basis-universal-transcoder
