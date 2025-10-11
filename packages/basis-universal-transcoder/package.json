@@ -1,6 +1,6 @@
 {
   "name": "@h00w/basis-universal-transcoder",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "WebAssembly-based Basis Universal texture transcoder with TypeScript bindings",
   "type": "module",
   "main": "./dist/index.mjs",
@@ -37,11 +37,9 @@
     "@types/three": "^0.168.0",
     "three": "^0.168.0",
     "typescript": "^5.9.3",
-    "vite": "^5.2.0",
-    "vite-plugin-dts": "^3.9.1",
-    "vite-plugin-wasm": "^3.3.0"
+    "vite": "^7.0.0",
+    "vite-plugin-dts": "^3.9.1"
   },
-  "peerDependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hwei/Basis-Universal-Transcoder-Project.git"

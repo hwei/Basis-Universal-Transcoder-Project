@@ -5,8 +5,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [
     dts({
-      include: ['src/**/*'],
-      exclude: ['demo/**/*'],
+      tsconfigPath: './tsconfig.lib.json',
       rollupTypes: true
     })
   ],
