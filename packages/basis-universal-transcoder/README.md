@@ -1,4 +1,4 @@
-# @hwei/basis-universal-transcoder
+# @h00w/basis-universal-transcoder
 
 A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 
@@ -14,7 +14,7 @@ A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 ## Installation
 
 ```bash
-npm install @hwei/basis-universal-transcoder
+npm install @h00w/basis-universal-transcoder
 ```
 
 ## Quick Start
@@ -22,7 +22,7 @@ npm install @hwei/basis-universal-transcoder
 ### Basic Usage
 
 ```typescript
-import { BasisUniversal } from '@hwei/basis-universal-transcoder';
+import { BasisUniversal } from '@h00w/basis-universal-transcoder';
 
 // Initialize the module
 const basisUniversal = await BasisUniversal.getInstance();
@@ -58,7 +58,7 @@ ktx2Transcoder.dispose();
 ### Format Detection
 
 ```typescript
-import { detectBestFormat, isFormatSupported, getFormatName } from '@hwei/basis-universal-transcoder';
+import { detectBestFormat, isFormatSupported, getFormatName } from '@h00w/basis-universal-transcoder';
 
 // Detect the best format for the current platform (requires WebGL context)
 const canvas = document.createElement('canvas');
@@ -75,7 +75,7 @@ if (isFormatSupported(TranscoderTextureFormat.cTFBC7_RGBA)) {
 ### Advanced Usage
 
 ```typescript
-import { BasisUniversal, KTX2Transcoder, TranscoderTextureFormat } from '@hwei/basis-universal-transcoder';
+import { BasisUniversal, KTX2Transcoder, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
 
 const transcoder = await BasisUniversal.getInstance();
 const ktx2Transcoder = transcoder.createKTX2Transcoder();
@@ -202,7 +202,7 @@ You can also directly import and use the WASM file for custom loading scenarios:
 
 ```typescript
 // Import WASM file directly
-import wasmUrl from '@hwei/basis-universal-transcoder/assets/basis_capi_transcoder.wasm?url';
+import wasmUrl from '@h00w/basis-universal-transcoder/assets/basis_capi_transcoder.wasm?url';
 
 // Custom WASM loading
 const response = await fetch(wasmUrl);
