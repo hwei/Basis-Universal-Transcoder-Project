@@ -30,9 +30,8 @@ jobs:
           
       - name: Build WASM
         run: |
-          cd packages/basis-universal-transcoder
-          chmod +x ../../scripts/build-wasm.sh
-          ../../scripts/build-wasm.sh
+          chmod +x ./scripts/build-wasm.sh
+          ./scripts/build-wasm.sh
           
       - name: Install dependencies
         run: |
