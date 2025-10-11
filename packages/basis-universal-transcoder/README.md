@@ -2,6 +2,8 @@
 
 A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 
+> **Note**: This library requires explicit WASM loading to prevent automatic WASM inlining during bundling, which could cause issues when users compile this library in their own projects.
+
 ## Features
 
 - 🚀 High-performance WebAssembly implementation
@@ -9,7 +11,7 @@ A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 - 🎯 Support for KTX2 files only
 - 🔧 Multiple output formats (BC1-7, ASTC, PVRTC, ETC, uncompressed)
 - 🌐 Works in both browser and Node.js environments
-- ⚡ Built with Vite using custom configuration to prevent WASM inlining
+- ⚡ Built with Vite
 
 ## Installation
 
@@ -23,9 +25,29 @@ npm install @h00w/basis-universal-transcoder
 
 ```typescript
 import { BasisUniversal } from '@h00w/basis-universal-transcoder';
+import wasmUrl from '@h00w/basis-universal-transcoder/basis_capi_transcoder.wasm';
+
+// Helper function to create WASM instantiator
+function createWasmInstantiator(wasmUrl: string) {
+  return async (imports: WebAssembly.Imports) => {
+    const fetchPromise = fetch(wasmUrl);
+    // Try streaming instantiation first (better performance)
+    if (WebAssembly.instantiateStreaming) {
+      try {
+        return await WebAssembly.instantiateStreaming(fetchPromise, imports);
+      } catch (e) {
+        console.warn('Streaming instantiation failed, falling back to ArrayBuffer method:', e);
+      }
+    }
+    // Fallback to manual compilation
+    const response = await fetchPromise;
+    const buffer = await response.arrayBuffer();
+    return WebAssembly.instantiate(buffer, imports);
+  };
+}
 
 // Initialize the module
-const basisUniversal = await BasisUniversal.getInstance();
+const basisUniversal = await BasisUniversal.getInstance(createWasmInstantiator(wasmUrl));
 
 // Load a KTX2 file
 const fileData = await fetch('texture.ktx2').then(r => r.arrayBuffer());
@@ -76,8 +98,10 @@ if (isFormatSupported(TranscoderTextureFormat.cTFBC7_RGBA)) {
 
 ```typescript
 import { BasisUniversal, KTX2Transcoder, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
+import wasmUrl from '@h00w/basis-universal-transcoder/basis_capi_transcoder.wasm';
 
-const transcoder = await BasisUniversal.getInstance();
+// Use the createWasmInstantiator helper function from the basic usage example
+const transcoder = await BasisUniversal.getInstance(createWasmInstantiator(wasmUrl));
 const ktx2Transcoder = transcoder.createKTX2Transcoder();
 ktx2Transcoder.init(data);
 
@@ -131,8 +155,11 @@ if (result) {
 **Tip**: Reuse the same `KTX2Transcoder` instance for multiple textures by calling `init()` multiple times. This reduces memory allocation overhead:
 
 ```typescript
-// Create transcoder once
-const transcoder = await BasisUniversal.getInstance();
+import { BasisUniversal, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
+import wasmUrl from '@h00w/basis-universal-transcoder/basis_capi_transcoder.wasm';
+
+// Use the createWasmInstantiator helper function from the basic usage example
+const transcoder = await BasisUniversal.getInstance(createWasmInstantiator(wasmUrl));
 const ktx2Transcoder = transcoder.createKTX2Transcoder();
 
 // Process multiple textures efficiently
@@ -168,8 +195,7 @@ ktx2Transcoder.dispose();
 
 Main class for managing the transcoder module.
 
-- `static getInstance(): Promise<BasisUniversal>`
-- `static getInstanceWithCustomWasm(wasm: BufferSource): Promise<BasisUniversal>`
+- `static getInstance(instantiateWasmAsync: InstantiateWasmAsync): Promise<BasisUniversal>`
 - `createKTX2Transcoder(): KTX2Transcoder`
 
 #### `KTX2Transcoder`
@@ -196,18 +222,22 @@ Supported output texture formats:
 - `cTFRGBA32` - 32-bit RGBA uncompressed
 - And more...
 
+### Type Definitions
+
+```typescript
+type InstantiateWasmAsync = (imports: WebAssembly.Imports) => Promise<WebAssembly.WebAssemblyInstantiatedSource>;
+```
+
 ### Direct WASM Access
 
 You can also directly import and use the WASM file for custom loading scenarios:
 
 ```typescript
 // Import WASM file directly
-import wasmUrl from '@h00w/basis-universal-transcoder/assets/basis_capi_transcoder.wasm?url';
+import wasmUrl from '@h00w/basis-universal-transcoder/basis_capi_transcoder.wasm';
 
-// Custom WASM loading
-const response = await fetch(wasmUrl);
-const wasmBuffer = await response.arrayBuffer();
-const basisUniversal = await BasisUniversal.getInstanceWithCustomWasm(wasmBuffer);
+// Custom WASM loading with your own instantiator
+const basisUniversal = await BasisUniversal.getInstance(createWasmInstantiator(wasmUrl));
 ```
 
 ### Utility Functions
