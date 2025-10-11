@@ -108,11 +108,13 @@ npm run preview                # Preview built package
 ## Build Configuration
 
 ### Vite Configuration
-- ES modules build with custom Rollup configuration
-- TypeScript declaration generation
-- Special WASM file handling (prevents inlining, ensures separate .wasm files)
-- Asset optimization with relative paths
-- Development server with hot reload
+- ES modules build targeting `.mjs` output format
+- Custom Rollup configuration for file naming (`entryFileNames: '[name].mjs'`)
+- TypeScript declaration generation with `vite-plugin-dts`
+- Public directory configured for WASM file distribution
+- Relative asset paths with `base: './'`
+- Development server with hot reload on port 3150 and demo auto-open
+- File system allowlist for monorepo structure (`fs: { allow: ['..', '../..'] }`)
 
 ### CMake Configuration
 - Emscripten toolchain
