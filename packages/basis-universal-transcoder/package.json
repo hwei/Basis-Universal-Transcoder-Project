@@ -1,6 +1,6 @@
 {
   "name": "@h00w/basis-universal-transcoder",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "WebAssembly-based Basis Universal texture transcoder with TypeScript bindings",
   "type": "module",
   "main": "./dist/index.mjs",

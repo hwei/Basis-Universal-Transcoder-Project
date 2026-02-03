@@ -76,6 +76,20 @@ export class KTX2Transcoder {
   }
 
   /**
+   * get_image_level_info() be called after init(), but the m_iframe_flag's won't be valid until start_transcoding() is called.
+   * You can call this method before calling transcode_image_level() to retrieve basic information about the mipmap level's dimensions, etc.
+   */
+  getImageLevelInfo(levelIndex: number, layerIndex: number, faceIndex: number): KTX2ImageLevelInfo | null {
+    this.checkDisposed();
+    this.checkInitialized();
+    const imageLevelInfo = this.imageLevelInfo;
+    if (!imageLevelInfo.fill(this.transcoderPtr, levelIndex, layerIndex, faceIndex)) {
+      return null;
+    }
+    return imageLevelInfo;
+  }
+
+  /**
    * Start transcoding (must be called before transcoding images)
    */
   startTranscoding(): boolean {
@@ -108,7 +122,9 @@ export class KTX2Transcoder {
     } = options;
 
     const imageLevelInfo = this.imageLevelInfo;
-    imageLevelInfo.fill(this.transcoderPtr, level, layer, face);
+    if (!imageLevelInfo.fill(this.transcoderPtr, level, layer, face)) {
+      return null;
+    }
     const origWidth = imageLevelInfo.origWidth;
     const origHeight = imageLevelInfo.origHeight;
 
