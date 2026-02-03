@@ -110,7 +110,7 @@ export interface TranscodeResult {
    * this data, you MUST create a copy using new Uint8Array(result.data) or 
    * result.data.slice() before calling transcodeImageLevel() again.
    */
-  data: Uint8Array<ArrayBuffer>;
+  data: Uint8Array;
   width: number;
   height: number;
 }

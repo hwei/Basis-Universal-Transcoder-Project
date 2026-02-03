@@ -6,16 +6,17 @@ import {
 } from './types';
 
 export class KTX2Transcoder {
-  private readonly funcs: BasisModuleFuncs;
   private readonly imageLevelInfo: KTX2ImageLevelInfo;
   private transcoderPtr: number = 0;
-  private inputMem = new Uint8Array();
-  private outputMem = new Uint8Array();
+  private readonly header = new KTX2Header();
+  private inputMemPtr = 0;
+  private inputMemSize = 0;
+  private outputMemPtr = 0;
+  private outputMemSize = 0;
   private initialized = false;
   private disposed = false;
 
-  constructor(funcs: BasisModuleFuncs) {
-    this.funcs = funcs;
+  constructor(private readonly funcs: BasisModuleFuncs) {
     this.transcoderPtr = funcs.ktx2_transcoder_new();
     this.imageLevelInfo = new KTX2ImageLevelInfo(funcs);
   }
@@ -34,23 +35,35 @@ export class KTX2Transcoder {
     this.checkDisposed();
 
     // free output
-    this.funcs.free(this.outputMem);
-    this.outputMem = new Uint8Array();
+    this.funcs.free(this.outputMemPtr);
+    this.outputMemPtr = 0;
+    this.outputMemSize = 0;
   
     // Allocate memory
-    if (this.inputMem.length < data.length) {
-      this.funcs.free(this.inputMem);
-      this.inputMem = this.funcs.malloc(data.length);
+    if (this.inputMemSize < data.length) {
+      this.funcs.free(this.inputMemPtr);
+      this.inputMemPtr = this.funcs.malloc(data.length);
+      this.inputMemSize = data.length;
     }
 
     // Copy data
-    this.inputMem.set(data);
+    this.funcs.heap.subarray(this.inputMemPtr, this.inputMemPtr + data.length).set(data);
 
     // Initialize the transcoder
-    const success = this.funcs.ktx2_transcoder_init(this.transcoderPtr, this.inputMem.byteOffset, data.length);
+    const success = this.funcs.ktx2_transcoder_init(this.transcoderPtr, this.inputMemPtr, data.length);
     this.initialized = success;
 
     return success;
+  }
+
+  /** Returns the KTX2 header. Valid after init(). */
+  getHeader() {
+    this.checkDisposed();
+    this.checkInitialized();
+    const ptr = this.funcs.ktx2_transcoder_get_header(this.transcoderPtr);
+    const header = this.header;
+    header.view(this.funcs.heap.buffer, ptr);
+    return header;
   }
 
   /**
@@ -59,7 +72,7 @@ export class KTX2Transcoder {
   getBasisTextureFormat(): BasisTextureFormat {
     this.checkDisposed();
     this.checkInitialized();
-    return this.funcs.ktx2_transcoder_get_basis_texture_format(this.transcoderPtr);
+    return this.funcs.ktx2_transcoder_get_basis_tex_format(this.transcoderPtr);
   }
 
   /**
@@ -95,7 +108,7 @@ export class KTX2Transcoder {
     } = options;
 
     const imageLevelInfo = this.imageLevelInfo;
-    imageLevelInfo.init(this.transcoderPtr, level, layer, face);
+    imageLevelInfo.fill(this.transcoderPtr, level, layer, face);
     const origWidth = imageLevelInfo.origWidth;
     const origHeight = imageLevelInfo.origHeight;
 
@@ -103,9 +116,10 @@ export class KTX2Transcoder {
     const outputSize = this.funcs.basis_compute_transcoded_image_size_in_bytes(format, origWidth, origHeight);
 
     // Allocate output buffer
-    if (this.outputMem.length < outputSize) {
-      this.funcs.free(this.outputMem);
-      this.outputMem = this.funcs.malloc(outputSize);
+    if (this.outputMemSize < outputSize) {
+      this.funcs.free(this.outputMemPtr);
+      this.outputMemPtr = this.funcs.malloc(outputSize);
+      this.outputMemSize = outputSize;
     }
 
     const uncompressed = this.funcs.basis_transcoder_format_is_uncompressed(format);
@@ -114,13 +128,13 @@ export class KTX2Transcoder {
     if (uncompressed) {
       args = [
         this.transcoderPtr, level, layer, face,
-        this.outputMem.byteOffset, origWidth * origHeight, format,
+        this.outputMemPtr, origWidth * origHeight, format,
         decodeFlags, origWidth, origHeight, -1, -1, 0];
     } else {
       const bytesPerBlock = this.funcs.basis_get_bytes_per_block_or_pixel(format);
       args = [
         this.transcoderPtr, level, layer, face,
-        this.outputMem.byteOffset, outputSize / bytesPerBlock, format,
+        this.outputMemPtr, outputSize / bytesPerBlock, format,
         decodeFlags, 0, 0, -1, -1, 0];
     }
 
@@ -131,15 +145,11 @@ export class KTX2Transcoder {
       return null;
     }
 
-    // Build result data view
-    const resultData = new Uint8Array(this.outputMem.buffer, this.outputMem.byteOffset, outputSize);
-
     return {
-      data: resultData,
+      data: this.funcs.heap.subarray(this.outputMemPtr, this.outputMemPtr + outputSize),
       width: origWidth,
       height: origHeight,
     };
-
   }
 
   /**
@@ -155,10 +165,12 @@ export class KTX2Transcoder {
       this.transcoderPtr = 0;
     }
 
-    this.funcs.free(this.inputMem);
-    this.inputMem = new Uint8Array();
-    this.funcs.free(this.outputMem);
-    this.outputMem = new Uint8Array();
+    this.funcs.free(this.inputMemPtr);
+    this.inputMemPtr = 0;
+    this.inputMemSize = 0;
+    this.funcs.free(this.outputMemPtr);
+    this.outputMemPtr = 0;
+    this.outputMemSize = 0;
 
     this.initialized = false;
 
@@ -213,23 +225,20 @@ export class KTX2Transcoder {
 // 	bool m_iframe_flag;
 // };
 
-export class KTX2ImageLevelInfo {
-  private readonly funcs: BasisModuleFuncs;
-  private readonly dataView: Uint32Array;
+class KTX2ImageLevelInfo {
+  private dataView: Uint32Array;
 
-  constructor(funcs: BasisModuleFuncs) {
-    this.funcs = funcs;
+  constructor(private readonly funcs: BasisModuleFuncs) {
     const structSize = 12 * 4 + 2 * 4;
-    const mem = funcs.malloc(structSize);
-    this.dataView = new Uint32Array(mem.buffer, mem.byteOffset, structSize / 4);
+    const ptr = funcs.malloc(structSize);
+    this.dataView = new Uint32Array(funcs.heap.buffer, ptr, structSize / 4);
   }
 
   dispose(): void {
-    this.funcs.free(this.dataView);
-    (this.dataView as any) = null;
+    this.funcs.free(this.dataView.byteOffset);
   }
 
-  init(ktx2TranscoderPtr: number, level_index: number, layer_index: number, face_index: number) {
+  fill(ktx2TranscoderPtr: number, level_index: number, layer_index: number, face_index: number) {
     return this.funcs.ktx2_transcoder_get_image_level_info(
       ktx2TranscoderPtr, this.dataView.byteOffset, level_index, layer_index, face_index);
   }
@@ -288,5 +297,71 @@ export class KTX2ImageLevelInfo {
 
   get iframeFlag(): boolean {
     return this.dataView[13] !== 0;
+  }
+}
+
+
+// struct ktx2_header
+// {
+// 	uint8_t m_identifier[12];
+// 	basisu::packed_uint<4> m_vk_format;
+// 	basisu::packed_uint<4> m_type_size;
+// 	basisu::packed_uint<4> m_pixel_width;
+// 	basisu::packed_uint<4> m_pixel_height;
+// 	basisu::packed_uint<4> m_pixel_depth;
+// 	basisu::packed_uint<4> m_layer_count;
+// 	basisu::packed_uint<4> m_face_count;
+// 	basisu::packed_uint<4> m_level_count;
+// 	basisu::packed_uint<4> m_supercompression_scheme;
+// 	basisu::packed_uint<4> m_dfd_byte_offset;
+// 	basisu::packed_uint<4> m_dfd_byte_length;
+// 	basisu::packed_uint<4> m_kvd_byte_offset;
+// 	basisu::packed_uint<4> m_kvd_byte_length;
+// 	basisu::packed_uint<8> m_sgd_byte_offset;
+// 	basisu::packed_uint<8> m_sgd_byte_length;
+// };
+const KTX2HeaderSize = 12 + 4 * 13 + 8 * 2;
+class KTX2Header {
+  private dataView: Uint32Array<ArrayBufferLike> = new Uint32Array();
+
+  view(buffer: ArrayBufferLike, ptr: number) {
+    this.dataView = new Uint32Array(buffer, ptr, KTX2HeaderSize / 4);
+  }
+
+  get vkFormat() {
+    return this.dataView[3];
+  }
+
+  get typeSize() {
+    return this.dataView[4];
+  }
+
+  /** Returns the texture's width in texels. Always non-zero, might not be divisible by 4. Valid after init(). */
+  get width() {
+    return this.dataView[5];
+  }
+
+  /** Returns the texture's height in texels. Always non-zero, might not be divisible by 4. Valid after init(). */
+  get height() {
+    return this.dataView[6];
+  }
+
+  get depth() {
+    return this.dataView[7];
+  }
+
+  /** Returns 0 or the number of layers in the texture array or texture video. Valid after init(). */
+  get layers() {
+    return this.dataView[8];
+  }
+
+  /* Returns the number of faces. Returns 1 for 2D textures and or 6 for cubemaps. Valid after init(). **/
+  get faces() {
+    return this.dataView[9];
+  }
+
+  /** Returns the texture's number of mipmap levels. Always returns 1 or higher. Valid after init(). */
+   get levels() {
+    return this.dataView[10];
   }
 }

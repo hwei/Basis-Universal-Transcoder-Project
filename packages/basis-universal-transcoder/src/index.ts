@@ -25,7 +25,7 @@ const BasisFuncProtos = {
   ktx2_transcoder_delete: (_transcoderPtr: number) => { },
   ktx2_transcoder_init: (_transcoderPtr: number, _dataPtr: number, _dataSize: number) => false,
   ktx2_transcoder_get_header: (_transcoderPtr: number) => 0,
-  ktx2_transcoder_get_basis_texture_format: (_transcoderPtr: number) => 0,
+  ktx2_transcoder_get_basis_tex_format: (_transcoderPtr: number) => 0,
   ktx2_transcoder_start_transcoding: (_transcoderPtr: number) => false,
   ktx2_transcoder_get_image_level_info: (
     _transcoderPtr: number,
@@ -51,10 +51,13 @@ const BasisFuncProtos = {
   ) => false,
 } as const;
 
-export type BasisModuleFuncs = typeof BasisFuncProtos & {
-  malloc: (size: number) => Uint8Array<ArrayBuffer>;
-  free: (mem: ArrayBufferView) => void;
+interface MemoryFuncs {
+  malloc(size: number): number;
+  free(ptr: number): void;
+  readonly heap: Uint8Array;
 }
+
+export type BasisModuleFuncs = typeof BasisFuncProtos & MemoryFuncs;
 
 function getProtoReturnType(v: false): 'boolean'
 function getProtoReturnType(v: 0): 'number'
@@ -70,21 +73,23 @@ function getProtoReturnType(v: any) {
   throw new Error(`Unknown return type: ${v}`);
 }
 
-function getAllBasisFuncs(module: EmscriptenModule) {
+function getAllBasisFuncs(module: EmscriptenModule): BasisModuleFuncs {
   const funcs = Object.entries(BasisFuncProtos).reduce((acc, [key, func]) => {
     const returnValue = (func as any)();
     const returnType = getProtoReturnType(returnValue);
     acc[key] = module.cwrap(key, returnType, numberArgTypes(func.length)) as any;
     return acc;
   }, {} as any);
-  funcs.malloc = (size: number) => {
-    const ptr = module._malloc(size);
-    return new Uint8Array(module.HEAPU8.buffer, ptr, size);
-  };
-  funcs.free = (mem: Uint8Array) => {
-    module._free(mem.byteOffset);
-  };
-  return funcs as BasisModuleFuncs;
+
+  const memoryFuncs: MemoryFuncs = {
+    malloc: (size) => module._malloc(size),
+    free: (ptr) => module._free(ptr),
+    get heap() {
+      return module.HEAPU8;
+    }
+  }
+
+  return Object.assign(memoryFuncs, funcs);
 }
 
 /**
