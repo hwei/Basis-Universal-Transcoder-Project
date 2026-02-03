@@ -32,6 +32,10 @@ export class KTX2Transcoder {
    */
   init(data: Uint8Array): boolean {
     this.checkDisposed();
+
+    // free output
+    this.funcs.free(this.outputMem);
+    this.outputMem = new Uint8Array();
   
     // Allocate memory
     if (this.inputMem.length < data.length) {
@@ -44,9 +48,7 @@ export class KTX2Transcoder {
 
     // Initialize the transcoder
     const success = this.funcs.ktx2_transcoder_init(this.transcoderPtr, this.inputMem.byteOffset, data.length);
-    if (success) {
-      this.initialized = true;
-    }
+    this.initialized = success;
 
     return success;
   }
