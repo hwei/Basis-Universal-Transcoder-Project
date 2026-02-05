@@ -2,6 +2,54 @@
 
 This project provides a WebAssembly-based Basis Universal texture transcoder with TypeScript bindings, designed for high-performance texture transcoding in web applications.
 
+## Comparison with Official Basis Universal WebGL Transcoder
+
+This project is an alternative implementation to the [official Basis Universal WebGL transcoder](https://github.com/BinomialLLC/basis_universal/tree/master/webgl). The key differences are:
+
+| Feature | This Project | Official Transcoder |
+|---------|-------------|---------------------|
+| **Dynamic Code Generation** | ❌ No `eval()` / `new Function()` | ✅ Uses `new Function()` for invoker generation |
+| **WeChat Mini Game Support** | ✅ Fully compatible | ❌ Not supported (CSP blocks dynamic code) |
+| **Mini Program Support** | ✅ Works in restricted environments | ❌ Blocked by security policies |
+| **Input Formats** | KTX2 only | KTX2 + .basis files |
+| **Encoder Support** | ❌ Transcoder only | ✅ Includes BasisEncoder class |
+| **API Style** | Custom C API + TypeScript wrapper | Embind C++ bindings |
+| **Bundle Size** | Smaller (minimal features) | Larger (full feature set) |
+| **WASM Loading** | Custom instantiator callback | Built-in loader |
+
+### Why No `eval()`?
+
+The official Basis Universal transcoder uses Emscripten's embind, which generates JavaScript wrapper functions at runtime using `new Function()`:
+
+```javascript
+// Official transcoder pattern (simplified)
+var invokerFnBody = `return function (${argsList}) {...}`;
+var invokerFunction = new Function(Object.keys(captures), functionBody);
+```
+
+This approach is blocked in environments with strict Content Security Policy (CSP):
+- **WeChat Mini Games** (微信小游戏)
+- **Alipay Mini Programs** (支付宝小程序)
+- **ByteDance Mini Games** (抖音小游戏)
+- **Chrome Extensions** with strict CSP
+- **Cloudflare Workers**
+
+This project avoids dynamic code generation by using a custom C API that exports plain functions, making it compatible with all these restricted environments.
+
+### When to Use Each
+
+**Use this project when:**
+- Building for WeChat Mini Games or other mini programs
+- Working in CSP-restricted environments
+- Only need KTX2 transcoding (not .basis files)
+- Want a smaller bundle size
+
+**Use the official transcoder when:**
+- Need to encode textures (BasisEncoder)
+- Need .basis file support
+- Need all helper functions and format queries
+- Working in standard browser environments
+
 ## Project Structure
 
 ```
@@ -61,6 +109,67 @@ yarn add @h00w/basis-universal-transcoder
 
 # pnpm
 pnpm add @h00w/basis-universal-transcoder
+```
+
+### Quick Usage Example
+
+```typescript
+import { BasisUniversal, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
+import wasmUrl from '@h00w/basis-universal-transcoder/basis_capi_transcoder.wasm';
+
+// Helper: Create WASM instantiator (no eval needed!)
+function createWasmInstantiator(url: string) {
+  return async (imports: WebAssembly.Imports) => {
+    const response = await fetch(url);
+    const buffer = await response.arrayBuffer();
+    return WebAssembly.instantiate(buffer, imports);
+  };
+}
+
+// Initialize
+const basisUniversal = await BasisUniversal.getInstance(createWasmInstantiator(wasmUrl));
+
+// Load and transcode KTX2 texture
+const ktx2Data = new Uint8Array(await fetch('texture.ktx2').then(r => r.arrayBuffer()));
+const transcoder = basisUniversal.createKTX2Transcoder();
+
+if (transcoder.init(ktx2Data) && transcoder.startTranscoding()) {
+  const result = transcoder.transcodeImageLevel({
+    format: TranscoderTextureFormat.cTFRGBA32,
+    level: 0
+  });
+
+  if (result) {
+    // Important: copy data if you need to persist it
+    const textureData = new Uint8Array(result.data);
+    console.log(`Transcoded: ${result.width}x${result.height}`);
+  }
+}
+
+transcoder.dispose();
+```
+
+### WeChat Mini Game Usage
+
+```typescript
+// WeChat Mini Game environment - no eval() issues!
+import { BasisUniversal, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
+
+function createWxWasmInstantiator(wasmFilePath: string) {
+  return async (imports: WebAssembly.Imports) => {
+    // Use WeChat's file system API
+    const fs = wx.getFileSystemManager();
+    const buffer = fs.readFileSync(wasmFilePath);
+    return WebAssembly.instantiate(buffer, imports);
+  };
+}
+
+// Initialize with WeChat-compatible loader
+const basisUniversal = await BasisUniversal.getInstance(
+  createWxWasmInstantiator('path/to/basis_capi_transcoder.wasm')
+);
+
+// Use the same transcoding API...
 ```
 
 📖 **[See the package README for detailed usage instructions →](packages/basis-universal-transcoder/README.md)**

@@ -12,6 +12,27 @@ A WebAssembly-based Basis Universal texture transcoder with TypeScript bindings.
 - 🔧 Multiple output formats (BC1-7, ASTC, PVRTC, ETC, uncompressed)
 - 🌐 Works in both browser and Node.js environments
 - ⚡ Built with Vite
+- ✅ **No `eval()` or `new Function()` - Compatible with WeChat Mini Games and CSP-restricted environments**
+
+## Why This Library?
+
+The [official Basis Universal WebGL transcoder](https://github.com/BinomialLLC/basis_universal/tree/master/webgl) uses Emscripten's embind, which generates JavaScript wrapper functions at runtime using `new Function()`. This is **blocked** in:
+
+- WeChat Mini Games (微信小游戏)
+- Alipay Mini Programs (支付宝小程序)
+- ByteDance Mini Games (抖音小游戏)
+- Chrome Extensions with strict CSP
+- Cloudflare Workers
+
+This library uses a custom C API that exports plain functions, avoiding all dynamic code generation.
+
+| Feature | This Library | Official Transcoder |
+|---------|-------------|---------------------|
+| **Dynamic Code Generation** | ❌ None | ✅ Uses `new Function()` |
+| **WeChat Mini Game** | ✅ Works | ❌ Blocked |
+| **Input Formats** | KTX2 only | KTX2 + .basis |
+| **Encoder Support** | ❌ No | ✅ Yes |
+| **Bundle Size** | Smaller | Larger |
 
 ## Installation
 
@@ -92,6 +113,30 @@ console.log('Best format:', getFormatName(bestFormat));
 if (isFormatSupported(TranscoderTextureFormat.cTFBC7_RGBA)) {
     console.log('BC7 is supported on this platform');
 }
+```
+
+### WeChat Mini Game Usage
+
+```typescript
+import { BasisUniversal, TranscoderTextureFormat } from '@h00w/basis-universal-transcoder';
+
+// WeChat Mini Game WASM loader - no eval() issues!
+function createWxWasmInstantiator(wasmFilePath: string) {
+  return async (imports: WebAssembly.Imports) => {
+    const fs = wx.getFileSystemManager();
+    const buffer = fs.readFileSync(wasmFilePath);
+    return WebAssembly.instantiate(buffer, imports);
+  };
+}
+
+// Initialize
+const basisUniversal = await BasisUniversal.getInstance(
+  createWxWasmInstantiator('path/to/basis_capi_transcoder.wasm')
+);
+
+// Create transcoder and use as normal
+const transcoder = basisUniversal.createKTX2Transcoder();
+// ... same API as browser usage
 ```
 
 ### Advanced Usage
