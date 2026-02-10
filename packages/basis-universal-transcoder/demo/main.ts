@@ -2,6 +2,7 @@ import {
   BasisUniversal,
   KTX2Transcoder,
   TranscoderTextureFormat,
+  BasisTextureFormat,
   detectBestFormat,
   isFormatSupported,
   getFormatName,
@@ -118,6 +119,12 @@ class BasisDemo {
     targetFormat.addEventListener('change', () => {
       this.updateFormatSupport();
     });
+
+    // Mip level selection
+    const mipLevel = document.getElementById('mipLevel') as HTMLSelectElement;
+    mipLevel.addEventListener('change', () => {
+      this.displayImageLevelInfo();
+    });
   }
 
   private async loadFile(file: File) {
@@ -137,6 +144,7 @@ class BasisDemo {
       }
 
       this.updateStatus('File loaded successfully');
+      this.displayFileInfo();
 
       const transcodeBtn = document.getElementById('transcodeBtn') as HTMLButtonElement;
       transcodeBtn.disabled = false;
@@ -302,7 +310,7 @@ class BasisDemo {
     } else if (format === TranscoderTextureFormat.cTFRGBA32) {
       // 未压缩的 RGBA32 格式
       texture = new THREE.DataTexture(
-        data,
+        new Uint8Array(data),
         width,
         height,
         THREE.RGBAFormat,
@@ -316,7 +324,7 @@ class BasisDemo {
     } else if (format === TranscoderTextureFormat.cTFRGB565) {
       // RGB565 格式
       texture = new THREE.DataTexture(
-        data,
+        new Uint8Array(data),
         width,
         height,
         THREE.RGBFormat,
@@ -330,7 +338,7 @@ class BasisDemo {
     } else if (format === TranscoderTextureFormat.cTFRGBA4444) {
       // RGBA4444 格式
       texture = new THREE.DataTexture(
-        data,
+        new Uint8Array(data),
         width,
         height,
         THREE.RGBAFormat,
@@ -431,6 +439,79 @@ class BasisDemo {
   private updateStatus(message: string, isError = false) {
     console.log(isError ? 'Error:' : 'Status:', message);
     // You could add a status display element to show this to users
+  }
+
+  private displayFileInfo() {
+    if (!this.currentTranscoder) return;
+
+    const header = this.currentTranscoder.getHeader();
+    const basisFormat = this.currentTranscoder.getBasisTextureFormat();
+
+    const fileInfoSection = document.getElementById('fileInfoSection')!;
+    fileInfoSection.style.display = '';
+
+    const headerInfo = document.getElementById('fileHeaderInfo')!;
+    headerInfo.innerHTML = `
+      <div class="info-item"><label>Dimensions</label><span>${header.width} × ${header.height}</span></div>
+      <div class="info-item"><label>Levels</label><span>${header.levels}</span></div>
+      <div class="info-item"><label>Layers</label><span>${header.layers}</span></div>
+      <div class="info-item"><label>Faces</label><span>${header.faces}</span></div>
+      <div class="info-item"><label>Depth</label><span>${header.depth}</span></div>
+      <div class="info-item"><label>vkFormat</label><span>${header.vkFormat}</span></div>
+      <div class="info-item"><label>Basis Format</label><span>${this.getBasisFormatName(basisFormat)}</span></div>
+    `;
+
+    this.populateMipLevelDropdown(header.levels);
+    this.displayImageLevelInfo();
+  }
+
+  private populateMipLevelDropdown(levels: number) {
+    const mipLevel = document.getElementById('mipLevel') as HTMLSelectElement;
+    mipLevel.innerHTML = '';
+    for (let i = 0; i < levels; i++) {
+      const option = document.createElement('option');
+      option.value = i.toString();
+      option.textContent = i === 0 ? `Level 0 (Full Size)` : `Level ${i}`;
+      mipLevel.appendChild(option);
+    }
+  }
+
+  private displayImageLevelInfo() {
+    if (!this.currentTranscoder) return;
+
+    const mipLevel = parseInt((document.getElementById('mipLevel') as HTMLSelectElement).value);
+    const info = this.currentTranscoder.getImageLevelInfo(mipLevel, 0, 0);
+
+    const imageLevelInfo = document.getElementById('imageLevelInfo')!;
+    if (!info) {
+      imageLevelInfo.innerHTML = '<div class="info-item"><label>Error</label><span>Failed to get image level info</span></div>';
+      return;
+    }
+
+    imageLevelInfo.innerHTML = `
+      <div class="info-item"><label>Orig Width</label><span>${info.origWidth}</span></div>
+      <div class="info-item"><label>Orig Height</label><span>${info.origHeight}</span></div>
+      <div class="info-item"><label>Width</label><span>${info.width}</span></div>
+      <div class="info-item"><label>Height</label><span>${info.height}</span></div>
+      <div class="info-item"><label>Blocks X</label><span>${info.numBlocksX}</span></div>
+      <div class="info-item"><label>Blocks Y</label><span>${info.numBlocksY}</span></div>
+      <div class="info-item"><label>Block Width</label><span>${info.blockWidth}</span></div>
+      <div class="info-item"><label>Block Height</label><span>${info.blockHeight}</span></div>
+      <div class="info-item"><label>Total Blocks</label><span>${info.totalBlocks}</span></div>
+      <div class="info-item"><label>Alpha</label><span>${info.alphaFlag ? 'Yes' : 'No'}</span></div>
+      <div class="info-item"><label>I-Frame</label><span>${info.iframeFlag ? 'Yes' : 'No'}</span></div>
+    `;
+  }
+
+  private getBasisFormatName(format: BasisTextureFormat): string {
+    switch (format) {
+      case BasisTextureFormat.cETC1S: return 'ETC1S';
+      case BasisTextureFormat.cUASTC4x4: return 'UASTC 4x4';
+      case BasisTextureFormat.cUASTC_HDR_4x4: return 'UASTC HDR 4x4';
+      case BasisTextureFormat.cASTC_HDR_6x6: return 'ASTC HDR 6x6';
+      case BasisTextureFormat.cASTC_HDR_6x6_INTERMEDIATE: return 'ASTC HDR 6x6 Intermediate';
+      default: return `Unknown (${format})`;
+    }
   }
 
   private formatBytes(bytes: number): string {
