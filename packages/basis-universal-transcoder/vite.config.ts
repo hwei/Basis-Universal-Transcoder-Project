@@ -38,13 +38,6 @@ export default defineConfig({
   
   server: {
     port: 3150,
-    fs: {
-      allow: ['..', '../..']
-    },
-    open: '/demo/index.html'
   },
   publicDir: 'public',
-  optimizeDeps: {
-    include: ['three']
-  }
 })

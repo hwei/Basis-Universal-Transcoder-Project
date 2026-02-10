@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["vite/client"],
+    "paths": {
+      "@h00w/basis-universal-transcoder": ["../packages/basis-universal-transcoder/src/index.ts"]
+    },
+    "baseUrl": "."
+  },
+  "include": ["*.ts", "../packages/basis-universal-transcoder/src/**/*"]
+}

@@ -3,3 +3,5 @@ build
 node_modules
 dist
 settings.local.json
+demo/dist
+demo/node_modules

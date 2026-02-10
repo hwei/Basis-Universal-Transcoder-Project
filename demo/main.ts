@@ -7,7 +7,7 @@ import {
   isFormatSupported,
   getFormatName,
   TranscodeResult
-} from '../src/index';
+} from '@h00w/basis-universal-transcoder';
 import * as THREE from 'three';
 import wasmUrl from '/basis_capi_transcoder.wasm?url';
 

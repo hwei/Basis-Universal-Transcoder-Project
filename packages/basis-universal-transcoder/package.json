@@ -34,8 +34,6 @@
   "devDependencies": {
     "@types/emscripten": "^1.39.10",
     "@types/node": "^20.0.0",
-    "@types/three": "^0.168.0",
-    "three": "^0.168.0",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vite-plugin-dts": "^3.9.1"
