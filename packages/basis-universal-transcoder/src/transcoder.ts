@@ -6,7 +6,7 @@ import {
 } from './types';
 
 export class KTX2Transcoder {
-  private readonly imageLevelInfo: KTX2ImageLevelInfo;
+  private readonly imageLevelInfo = new KTX2ImageLevelInfo();
   private transcoderPtr: number = 0;
   private readonly header = new KTX2Header();
   private inputMemPtr = 0;
@@ -18,7 +18,6 @@ export class KTX2Transcoder {
 
   constructor(private readonly funcs: BasisModuleFuncs) {
     this.transcoderPtr = funcs.ktx2_transcoder_new();
-    this.imageLevelInfo = new KTX2ImageLevelInfo(funcs);
   }
 
   /**
@@ -83,7 +82,7 @@ export class KTX2Transcoder {
     this.checkDisposed();
     this.checkInitialized();
     const imageLevelInfo = this.imageLevelInfo;
-    if (!imageLevelInfo.fill(this.transcoderPtr, levelIndex, layerIndex, faceIndex)) {
+    if (!imageLevelInfo.fill(this.funcs, this.transcoderPtr, levelIndex, layerIndex, faceIndex)) {
       return null;
     }
     return imageLevelInfo;
@@ -122,7 +121,7 @@ export class KTX2Transcoder {
     } = options;
 
     const imageLevelInfo = this.imageLevelInfo;
-    if (!imageLevelInfo.fill(this.transcoderPtr, level, layer, face)) {
+    if (!imageLevelInfo.fill(this.funcs, this.transcoderPtr, level, layer, face)) {
       return null;
     }
     const origWidth = imageLevelInfo.origWidth;
@@ -189,8 +188,6 @@ export class KTX2Transcoder {
     this.outputMemSize = 0;
 
     this.initialized = false;
-
-    this.imageLevelInfo.dispose();
     this.disposed = true;
   }
 
@@ -241,78 +238,83 @@ export class KTX2Transcoder {
 // 	bool m_iframe_flag;
 // };
 
+const KTX2ImageLevelInfoSize = 12 * 4 + 2 * 4;
+
 class KTX2ImageLevelInfo {
-  private dataView: Uint32Array;
+  private buffer: Uint32Array = new Uint32Array(KTX2ImageLevelInfoSize / 4);
 
-  constructor(private readonly funcs: BasisModuleFuncs) {
-    const structSize = 12 * 4 + 2 * 4;
-    const ptr = funcs.malloc(structSize);
-    this.dataView = new Uint32Array(funcs.heap.buffer, ptr, structSize / 4);
-  }
-
-  dispose(): void {
-    this.funcs.free(this.dataView.byteOffset);
-  }
-
-  fill(ktx2TranscoderPtr: number, level_index: number, layer_index: number, face_index: number) {
-    return this.funcs.ktx2_transcoder_get_image_level_info(
-      ktx2TranscoderPtr, this.dataView.byteOffset, level_index, layer_index, face_index);
+  fill(funcs: BasisModuleFuncs, ktx2TranscoderPtr: number, level_index: number, layer_index: number, face_index: number) {
+    const ptr = funcs.malloc(KTX2ImageLevelInfoSize);
+    try {
+      const r = funcs.ktx2_transcoder_get_image_level_info(
+        ktx2TranscoderPtr, ptr, level_index, layer_index, face_index);
+      const buffer = this.buffer;
+      if (!r) {
+        buffer.fill(0);
+        return false;
+      }
+      const view = new Uint32Array(funcs.heap.buffer, ptr, buffer.length);
+      this.buffer.set(view);
+      return true;
+    } finally {
+      funcs.free(ptr);
+    }
   }
 
   get levelIndex(): number {
-    return this.dataView[0];
+    return this.buffer[0];
   }
 
   get layerIndex(): number {
-    return this.dataView[1];
+    return this.buffer[1];
   }
 
   get faceIndex(): number {
-    return this.dataView[2];
+    return this.buffer[2];
   }
 
   get origWidth(): number {
-    return this.dataView[3];
+    return this.buffer[3];
   }
 
   get origHeight(): number {
-    return this.dataView[4];
+    return this.buffer[4];
   }
 
   get width(): number {
-    return this.dataView[5];
+    return this.buffer[5];
   }
 
   get height(): number {
-    return this.dataView[6];
+    return this.buffer[6];
   }
 
   get numBlocksX(): number {
-    return this.dataView[7];
+    return this.buffer[7];
   }
 
   get numBlocksY(): number {
-    return this.dataView[8];
+    return this.buffer[8];
   }
 
   get blockWidth(): number {
-    return this.dataView[9];
+    return this.buffer[9];
   }
 
   get blockHeight(): number {
-    return this.dataView[10];
+    return this.buffer[10];
   }
 
   get totalBlocks(): number {
-    return this.dataView[11];
+    return this.buffer[11];
   }
 
   get alphaFlag(): boolean {
-    return this.dataView[12] !== 0;
+    return this.buffer[12] !== 0;
   }
 
   get iframeFlag(): boolean {
-    return this.dataView[13] !== 0;
+    return this.buffer[13] !== 0;
   }
 }
 
@@ -338,7 +340,7 @@ class KTX2ImageLevelInfo {
 // };
 const KTX2HeaderSize = 12 + 4 * 13 + 8 * 2;
 class KTX2Header {
-  private dataView: Uint32Array<ArrayBufferLike> = new Uint32Array();
+  private dataView: Uint32Array = new Uint32Array();
 
   view(buffer: ArrayBufferLike, ptr: number) {
     this.dataView = new Uint32Array(buffer, ptr, KTX2HeaderSize / 4);
