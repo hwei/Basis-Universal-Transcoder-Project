@@ -2,6 +2,8 @@
 
 This project provides a WebAssembly-based Basis Universal texture transcoder with TypeScript bindings, designed for high-performance texture transcoding in web applications.
 
+🎮 **[Try the Live Demo →](https://hwei.github.io/Basis-Universal-Transcoder-Project/)**
+
 ## Comparison with Official Basis Universal WebGL Transcoder
 
 This project is an alternative implementation to the [official Basis Universal WebGL transcoder](https://github.com/BinomialLLC/basis_universal/tree/master/webgl). The key differences are:
@@ -213,6 +215,8 @@ npm run preview                # Preview built package
 - File drag-and-drop support
 - Real-time transcoding with performance metrics
 - Platform capability detection
+
+🎮 **[Try the Live Demo →](https://hwei.github.io/Basis-Universal-Transcoder-Project/)**
 
 ## Build Configuration
 
