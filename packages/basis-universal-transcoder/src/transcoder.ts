@@ -55,7 +55,14 @@ export class KTX2Transcoder {
     return success;
   }
 
-  /** Returns the KTX2 header. Valid after init(). */
+  /**
+   * Returns the KTX2 header. Valid after init().
+   *
+   * ⚠️ IMPORTANT: The returned KTX2Header references WASM-managed memory.
+   * Calling other methods (init, transcodeImageLevel, getImageLevelInfo, etc.)
+   * may cause WASM heap reallocation, invalidating the header's internal buffer.
+   * Read header properties immediately after calling this method.
+   */
   getHeader() {
     this.checkDisposed();
     this.checkInitialized();
@@ -99,12 +106,14 @@ export class KTX2Transcoder {
 
   /**
    * Transcode an image level
-   * 
+   *
    * ⚠️ IMPORTANT: The returned TranscodeResult.data references WASM-managed memory
-   * and will become invalid after the next call to this method. If you need to
-   * persist the data, create a copy using new Uint8Array(result.data) or 
-   * result.data.slice() before calling this method again.
-   * 
+   * and may become invalid after calling any other method on this transcoder
+   * (including init, transcodeImageLevel, getImageLevelInfo, etc.) due to
+   * potential WASM heap reallocation. If you need to persist the data, create
+   * a copy using `new Uint8Array(result.data)` or `result.data.slice()`
+   * immediately after this call.
+   *
    * @param options Transcoding options including format, level, layer, face
    * @returns TranscodeResult with image data, or null if transcoding failed
    */
