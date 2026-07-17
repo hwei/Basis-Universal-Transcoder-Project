@@ -139,6 +139,44 @@ const transcoder = basisUniversal.createKTX2Transcoder();
 // ... same API as browser usage
 ```
 
+### Zstd In-Memory Decompression (WeChat Mini Games)
+
+The WASM module already includes Zstandard for KTX2 supercompression. The same
+instance also exposes a standalone decompressor for general resource payloads:
+
+```typescript
+import {
+  BasisUniversal,
+  zstdErrorName,
+  ZSTD_DEFAULT_MAX_SIZE,
+} from '@h00w/basis-universal-transcoder';
+
+const basisUniversal = await BasisUniversal.getInstance(
+  createWxWasmInstantiator('path/to/basis_capi_transcoder.wasm')
+);
+
+const zstd = basisUniversal.createZstdDecompressor();
+const compressed = new Uint8Array(fs.readFileSync('res/bundle.zst'));
+
+// maxSize defaults to 64MB. It is a reject limit, not a pre-allocation size.
+const result = zstd.decompress(compressed, {
+  maxSize: 16 * 1024 * 1024, // recommended for mini-game resource budgets
+});
+
+if (!result.ok) {
+  throw new Error(`zstd failed: ${result.code} ${zstdErrorName(result.code)}`);
+}
+
+// IMPORTANT: result.data is a WASM heap view. Copy if you need to keep it.
+const payload = result.data.slice();
+zstd.dispose();
+```
+
+Notes:
+- Shares the same WASM/`BasisUniversal` instance as `createKTX2Transcoder()`.
+- Default `maxSize` is `ZSTD_DEFAULT_MAX_SIZE` (64MB); buffers grow on demand only.
+- Failed calls return `{ ok: false, code }`; map with `zstdErrorName(code)`.
+
 ### Advanced Usage
 
 ```typescript
@@ -174,7 +212,7 @@ ktx2Transcoder.dispose();
 
 ### Data Persistence Warning
 
-**Critical**: The `TranscodeResult.data` returned by `transcodeImageLevel()` references WASM-managed memory and will become **invalid** after the next call to `transcodeImageLevel()`. 
+**Critical**: The `TranscodeResult.data` returned by `transcodeImageLevel()` and successful `ZstdDecompressor.decompress().data` reference WASM-managed memory and will become **invalid** after later WASM allocations on the same instance. 
 
 If you need to persist the transcoded data, you **must** create a copy:
 
