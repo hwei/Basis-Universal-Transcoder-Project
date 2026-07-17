@@ -5,19 +5,19 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+const testDir = dirname(fileURLToPath(import.meta.url));
+const pkgRoot = resolve(testDir, '..');
+const testdataDir = resolve(pkgRoot, 'testdata');
+const distDir = resolve(pkgRoot, 'dist');
+const distIndex = resolve(distDir, 'index.mjs');
+const wasmPath = resolve(distDir, 'basis_capi_transcoder.wasm');
+
 // Emscripten MINIMAL_RUNTIME glue still references CJS globals in some paths.
-// Provide Node-compatible shims before importing the package bundle.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Point __dirname at dist so default wasm path resolution works under Node ESM.
 const require = createRequire(import.meta.url);
 globalThis.require = require;
-globalThis.__filename = __filename;
-globalThis.__dirname = __dirname;
-
-const pkgRoot = resolve(__dirname, '..');
-const testdataDir = resolve(pkgRoot, 'testdata');
-const distIndex = resolve(pkgRoot, 'dist/index.mjs');
-const wasmPath = resolve(pkgRoot, 'dist/basis_capi_transcoder.wasm');
+globalThis.__filename = distIndex;
+globalThis.__dirname = distDir;
 
 async function createNodeWasmInstantiator(path) {
   const wasmBytes = await readFile(path);
