@@ -1,8 +1,14 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// Emscripten MINIMAL_RUNTIME glue still references require() in some paths.
+// Provide a Node-compatible require before importing the package bundle.
+const require = createRequire(import.meta.url);
+globalThis.require = require;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, '..');
