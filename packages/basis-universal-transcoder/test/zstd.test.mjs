@@ -5,12 +5,15 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// Emscripten MINIMAL_RUNTIME glue still references require() in some paths.
-// Provide a Node-compatible require before importing the package bundle.
+// Emscripten MINIMAL_RUNTIME glue still references CJS globals in some paths.
+// Provide Node-compatible shims before importing the package bundle.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 globalThis.require = require;
+globalThis.__filename = __filename;
+globalThis.__dirname = __dirname;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, '..');
 const testdataDir = resolve(pkgRoot, 'testdata');
 const distIndex = resolve(pkgRoot, 'dist/index.mjs');
