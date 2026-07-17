@@ -7,12 +7,14 @@
 
 import { EmscriptenModule, TranscoderTextureFormat } from './types.js';
 import { KTX2Transcoder } from './transcoder.js';
+import { ZstdDecompressor } from './zstd.js';
 import basis_capi_transcoder_js from '../../../build/basis_capi_transcoder_patched.js';
 
 // Re-export types and utilities
 export * from './types.js';
 export * from './transcoder.js';
 export * from './utils.js';
+export * from './zstd.js';
 
 const BasisFuncProtos = {
   basisu_transcoder_init: () => { },
@@ -49,6 +51,18 @@ const BasisFuncProtos = {
     _channel1: number,
     _statePtr: number,
   ) => false,
+  zstd_decompress: (
+    _dstPtr: number,
+    _dstCapacity: number,
+    _srcPtr: number,
+    _compressedSize: number,
+  ) => 0,
+  zstd_is_error: (_code: number) => 0,
+  zstd_get_decompressed_size: (
+    _srcPtr: number,
+    _srcSize: number,
+    _outSizePtr: number,
+  ) => 0,
 } as const;
 
 interface MemoryFuncs {
@@ -124,6 +138,14 @@ export class BasisUniversal {
    */
   createKTX2Transcoder(): KTX2Transcoder {
     return new KTX2Transcoder(this.funcs);
+  }
+
+  /**
+   * Create a standalone Zstandard decompressor sharing this WASM instance.
+   * Useful for in-memory resource decompression (e.g. WeChat Mini Games).
+   */
+  createZstdDecompressor(): ZstdDecompressor {
+    return new ZstdDecompressor(this.funcs);
   }
 }
 

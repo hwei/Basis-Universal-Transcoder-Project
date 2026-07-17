@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -19,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: packages/basis-universal-transcoder/package-lock.json
           
@@ -61,7 +62,7 @@ jobs:
           path: packages/basis-universal-transcoder/*.tgz
           retention-days: 30
           
-      - name: Run tests
+      - name: Run smoke tests
         run: |
           cd packages/basis-universal-transcoder
-          npm test --if-present
+          npm test

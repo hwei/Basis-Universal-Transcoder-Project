@@ -1,5 +1,15 @@
 #include "./extern/basis_universal/transcoder/basisu_transcoder.h"
+#include "./extern/basis_universal/zstd/zstd.h"
 #include <emscripten/emscripten.h>
+#include <cstdint>
+
+// Custom status codes for zstd_get_decompressed_size (not zstd native codes).
+enum zstd_size_status : uint32_t {
+    ZSTD_SIZE_OK = 0,
+    ZSTD_SIZE_CONTENT_ERROR = 1,
+    ZSTD_SIZE_CONTENT_UNKNOWN = 2,
+    ZSTD_SIZE_TOO_LARGE_FOR_U32 = 3,
+};
 
 extern "C" {
 
@@ -125,6 +135,46 @@ bool ktx2_transcoder_transcode_image_level(
         level_index, layer_index, face_index,
         pOutput_blocks, output_blocks_buf_size_in_blocks_or_pixels,
         fmt, decode_flags, output_row_pitch_in_blocks_or_pixels, output_rows_in_pixels, channel0, channel1, pState);
+}
+
+// ---------------------------------------------------------------------------
+// Standalone Zstd decompress API (for general-purpose in-memory decompression)
+// ---------------------------------------------------------------------------
+
+EMSCRIPTEN_KEEPALIVE
+size_t zstd_decompress(void* dst, size_t dstCapacity, const void* src, size_t compressedSize)
+{
+    return ZSTD_decompress(dst, dstCapacity, src, compressedSize);
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t zstd_is_error(size_t code)
+{
+    return ZSTD_isError(code) ? 1u : 0u;
+}
+
+// Reads decompressed content size from a zstd frame header into *outSize.
+// Returns zstd_size_status (0 on success). Avoids returning 64-bit values to JS.
+EMSCRIPTEN_KEEPALIVE
+uint32_t zstd_get_decompressed_size(const void* src, size_t srcSize, uint32_t* outSize)
+{
+    if (!outSize) {
+        return ZSTD_SIZE_CONTENT_ERROR;
+    }
+
+    const unsigned long long contentSize = ZSTD_getFrameContentSize(src, srcSize);
+    if (contentSize == ZSTD_CONTENTSIZE_ERROR) {
+        return ZSTD_SIZE_CONTENT_ERROR;
+    }
+    if (contentSize == ZSTD_CONTENTSIZE_UNKNOWN) {
+        return ZSTD_SIZE_CONTENT_UNKNOWN;
+    }
+    if (contentSize > 0xFFFFFFFFull) {
+        return ZSTD_SIZE_TOO_LARGE_FOR_U32;
+    }
+
+    *outSize = static_cast<uint32_t>(contentSize);
+    return ZSTD_SIZE_OK;
 }
 
 }
